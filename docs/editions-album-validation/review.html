@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Still 相册架 · 验收</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#eee;color:#222;font:15px/1.7 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif}main{max-width:1280px;margin:auto;padding:48px 28px}h1{font-size:34px;letter-spacing:-1px;margin:0}h2{font-size:21px;margin:42px 0 16px}p{color:#626262}img{display:block;width:100%;height:auto;border-radius:7px}section{margin-top:26px}.pair{display:grid;grid-template-columns:1fr 1fr;gap:22px}figure{margin:0}figcaption{padding:10px 0;color:#666;font-size:12px}.viewer{background:#fff;padding:18px;border-radius:12px}input{width:100%;accent-color:#222}.references{display:grid;grid-template-columns:2fr 1fr;gap:20px;align-items:start}.references img{max-height:620px;object-fit:contain}a{color:#333}small{color:#777}.badge{display:inline-block;border:1px solid #ccc;border-radius:99px;padding:3px 12px;font-size:12px;margin:16px 8px 0 0}@media(max-width:760px){.pair,.references{grid-template-columns:1fr}main{padding:24px 18px}}
+</style>
+<main>
+<h1>Still，新的相册架</h1>
+<p>Mac 原生页面。浅灰墙面、实体搁板、照片封套；点选后抽出、翻面、打开相册。</p>
+<span class="badge">构建通过</span><span class="badge">6 项测试通过</span><span class="badge">独立开发版资料库</span>
+<h2>更新：封面只显示名字，移除底部索引</h2><p>12 本示例相册，每行 5 本，当前窗口显示前 10 本，其余 2 本向下滚动查看。独立内存资料库，未修改用户相册。此图为原生视图导出。</p><img src="title-only-many-albums.jpg"><h2>上一轮：改前与改后</h2><div class="pair"><figure><img src="before.png"><figcaption>改前 · 用户提供的目录截图</figcaption></figure><figure><img src="native-library.jpg"><figcaption>改后 · 最终原生窗口截图</figcaption></figure></div>
+<h2>上一轮详情截图</h2><p>最新版本已移除“相册 / 编号”和翻面功能。下方保留此前动效验收截图。</p><div class="pair"><figure><img src="native-detail.jpg"><figcaption>封套移到中央，背景虚化，可打开相册或放回。</figcaption></figure><figure><img src="native-back.jpg"><figcaption>空格或按钮翻面，Escape 放回。</figcaption></figure></div>
+<h2>参考页逐帧查看</h2><p>滑动查看 32 张实际采样。约 700 ms 完成抽出，先移动与放大，随后背景虚化和说明浮现。采样时间含工具开销。</p>
+<div class="viewer"><img id="reference" src="reference-open-0.png"><input id="refRange" type="range" min="0" max="31" value="0" aria-label="参考页动画帧"><small id="refLabel">第 1 / 32 帧</small></div>
+<h2>原生点击关键帧</h2><p>原生工具第一帧约在点击后 422 ms；这里只展示实际捕获的后半段和稳定状态。</p>
+<div class="viewer"><img id="native" src="native-open-0.png"><input id="nativeRange" type="range" min="0" max="15" value="0" aria-label="原生动画帧"><small id="nativeLabel">第 1 / 16 帧</small></div>
+<h2>宽窄屏参考</h2><div class="references"><figure><img src="reference-wide.png"><figcaption>Shopify 宽屏使用实体唱片架，中等宽度仍保留此布局。</figcaption></figure><figure><img src="reference-narrow.png"><figcaption>390 px 窄屏改为纵向堆叠。当前项目无手机端，本次只实现 Mac。</figcaption></figure></div>
+<h2>验收说明</h2><p>已验证详情、翻面、放回、照片墙、双页阅读与返回目录。原生 hover 连续移入／移出采样受工具限制，未做完整录屏；材质与弹性采用 SwiftUI 近似。完整检查范围见 <a href="README.md">验收记录</a>。</p>
+</main>
+<script>
+for(const [range,image,label,prefix,count] of [['refRange','reference','refLabel','reference-open',32],['nativeRange','native','nativeLabel','native-open',16]]){
+document.getElementById(range).addEventListener('input',e=>{const n=+e.target.value;document.getElementById(image).src=prefix+'-'+n+'.png';document.getElementById(label).textContent=`第 ${n+1} / ${count} 帧`;});}
+</script></html>
