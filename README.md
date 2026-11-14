@@ -1,4 +1,6 @@
-# Contact Sheet
+# Still
+
+![Still](docs/branding/still-logo.png)
 
 一款本地 macOS 相册应用：管理多本相册，以流动照片墙浏览照片，点击查看和编辑旁注，也可切换双页阅读。
 
@@ -27,7 +29,7 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
   -configuration Release SYMROOT="$PWD/build" build
 ```
 
-Release 产物为 `build/Release/Contact Sheet.app`。这些是本地构建，尚未作为公证安装包发布。构建产物与用户相册数据库不纳入版本管理。
+Release 产物为 `build/Release/Still.app`。这些是本地构建，尚未作为公证安装包发布。构建产物与用户相册数据库不纳入版本管理。
 
 ## 目录
 
@@ -38,3 +40,5 @@ Release 产物为 `build/Release/Contact Sheet.app`。这些是本地构建，�
 - `prototype/`：独立 NSH / Rust 跨平台技术原型，尚非当前正式客户端。
 
 当前范围不包含桌面小组件。Apple Photos 导入及 Windows 原型仍需进一步实机验收；本地文件导入、旁注保存和重启恢复已验证。摄影样片的来源见 `previews/photo-albums/photo-sources.json`。
+
+应用显示名称为 Still；为兼容已保存的相册，bundle ID 和内部工程目标仍沿用原标识。图标源文件与打包说明见 `docs/branding/README.md`。

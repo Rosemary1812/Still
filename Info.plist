@@ -1,14 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0"><dict>
-<key>CFBundleIdentifier</key><string>local.contact-sheet.app</string>
-<key>CFBundleName</key><string>Contact Sheet</string>
-<key>CFBundleDisplayName</key><string>Contact Sheet</string>
-<key>CFBundleExecutable</key><string>Contact Sheet</string>
-<key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>0.2.0</string>
-<key>CFBundleVersion</key><string>1</string>
-<key>LSMinimumSystemVersion</key><string>14.0</string>
-<key>NSHighResolutionCapable</key><true/>
-<key>NSPhotoLibraryUsageDescription</key><string>Choose photographs and albums for your private desktop display. Contact Sheet never changes or deletes your originals.</string>
-</dict></plist>
+<plist version="1.0">
+<dict>
+	<key>CFBundleDisplayName</key>
+	<string>Still</string>
+	<key>CFBundleExecutable</key>
+	<string>Still</string>
+	<key>CFBundleIconFile</key>
+	<string>Still</string>
+	<key>CFBundleIdentifier</key>
+	<string>local.contact-sheet.app</string>
+	<key>CFBundleName</key>
+	<string>Still</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.3.0</string>
+	<key>CFBundleVersion</key>
+	<string>3</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>14.0</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Choose photographs and albums for your private desktop display. Still never changes or deletes your originals.</string>
+</dict>
+</plist>

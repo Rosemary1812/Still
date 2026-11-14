@@ -5,15 +5,15 @@ struct ContactSheetApp: App {
     @StateObject private var app = AppController()
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     var body: some Scene {
-        Window("Contact Sheet", id: "library") {
+        Window("Still", id: "library") {
             Group {
                 if let store = app.store {
                     LibraryView().environmentObject(app).environmentObject(store).environmentObject(app.photos).environmentObject(app.player)
-                } else { ContentUnavailableView("Could not open your library", systemImage: "externaldrive.badge.exclamationmark", description: Text(app.startupError ?? "Restart Contact Sheet. Your saved library has not been replaced.")).padding(40) }
+                } else { ContentUnavailableView("Could not open your library", systemImage: "externaldrive.badge.exclamationmark", description: Text(app.startupError ?? "Restart Still. Your saved library has not been replaced.")).padding(40) }
             }.frame(minWidth: 780, minHeight: 620)
         }.defaultSize(width: 1000, height: 837)
         .commands { CommandGroup(after: .newItem) { Button("Show Photo Display") { app.showDisplay() }.keyboardShortcut("d", modifiers: [.command,.shift]) } }
-        MenuBarExtra("Contact Sheet", systemImage: "rectangle.stack") { MenuContents().environmentObject(app).environmentObject(app.player) }
+        MenuBarExtra("Still", systemImage: "rectangle.stack") { MenuContents().environmentObject(app).environmentObject(app.player) }
         Settings { PreferencesView().environmentObject(app.player).frame(width: 370).padding(24) }
     }
 }
@@ -44,7 +44,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard let store else { return }
         if display == nil {
             let window = NSWindow(contentRect: NSRect(x:100,y:100,width:360,height:440), styleMask: [.titled,.closable,.resizable,.miniaturizable,.fullSizeContentView], backing: .buffered, defer: false)
-            window.title = "Contact Sheet Display"; window.titleVisibility = .hidden; window.titlebarAppearsTransparent = true
+            window.title = "Still Display"; window.titleVisibility = .hidden; window.titlebarAppearsTransparent = true
             window.isReleasedWhenClosed = false; window.isMovableByWindowBackground = true
             window.minSize = NSSize(width:220,height:240); window.level = .normal
             window.setFrameAutosaveName("ContactSheetDisplay")
@@ -69,6 +69,6 @@ struct MenuContents: View {
         Divider()
         Button("Open Library") { openWindow(id:"library"); NSApp.activate(ignoringOtherApps:true) }
         SettingsLink()
-        Button("Quit Contact Sheet") { NSApp.terminate(nil) }.keyboardShortcut("q")
+        Button("Quit Still") { NSApp.terminate(nil) }.keyboardShortcut("q")
     }
 }
