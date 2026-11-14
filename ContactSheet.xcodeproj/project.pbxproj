@@ -1,0 +1,32 @@
+// !$*UTF8*$!
+{ archiveVersion = 1; classes = {}; objectVersion = 56; objects = {
+5ED0CFDD38009493EE0463BA = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AlbumExperience.swift"; sourceTree = "<group>"; };
+A9F907E665DEDBAEF5845B24 = { isa = PBXBuildFile; fileRef = 5ED0CFDD38009493EE0463BA; };
+CAF344CF681DE2F4CB4B91EC = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "App.swift"; sourceTree = "<group>"; };
+A249DDA19BB41A53BB8F2494 = { isa = PBXBuildFile; fileRef = CAF344CF681DE2F4CB4B91EC; };
+6F4B176243F5461A99B410C5 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DisplayView.swift"; sourceTree = "<group>"; };
+0C2962C69A206AFBA9FA0505 = { isa = PBXBuildFile; fileRef = 6F4B176243F5461A99B410C5; };
+FA28D63358511C16B23C09E9 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ImportView.swift"; sourceTree = "<group>"; };
+8A48EE1C6CAD9E61DBC95F8C = { isa = PBXBuildFile; fileRef = FA28D63358511C16B23C09E9; };
+B6F36FFC5E43175067FCF6BF = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LibraryView.swift"; sourceTree = "<group>"; };
+375E7102E5615BC742ED6F79 = { isa = PBXBuildFile; fileRef = B6F36FFC5E43175067FCF6BF; };
+19BFBC84FD9B2B92C10227AA = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Models.swift"; sourceTree = "<group>"; };
+487C502A5481E87001E8CC43 = { isa = PBXBuildFile; fileRef = 19BFBC84FD9B2B92C10227AA; };
+EE4577D548F1E9E521E444BF = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PhotoRepository.swift"; sourceTree = "<group>"; };
+523C7459EBDE811CCB478CD3 = { isa = PBXBuildFile; fileRef = EE4577D548F1E9E521E444BF; };
+04FD01C9B4EF5CBF907EC22F = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Playback.swift"; sourceTree = "<group>"; };
+D25E1167EFA93C6AC2275532 = { isa = PBXBuildFile; fileRef = 04FD01C9B4EF5CBF907EC22F; };
+7D1043473D55BFA90E8530D3 = { isa = PBXFileReference; explicitFileType = wrapper.application; path = "Contact Sheet.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+BCE16DD0260827ECF338C787 = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A9F907E665DEDBAEF5845B24,A249DDA19BB41A53BB8F2494,0C2962C69A206AFBA9FA0505,8A48EE1C6CAD9E61DBC95F8C,375E7102E5615BC742ED6F79,487C502A5481E87001E8CC43,523C7459EBDE811CCB478CD3,D25E1167EFA93C6AC2275532,); runOnlyForDeploymentPostprocessing = 0; };
+482182478A3ECD4745BEA917 = { isa = PBXGroup; children = (5ED0CFDD38009493EE0463BA,CAF344CF681DE2F4CB4B91EC,6F4B176243F5461A99B410C5,FA28D63358511C16B23C09E9,B6F36FFC5E43175067FCF6BF,19BFBC84FD9B2B92C10227AA,EE4577D548F1E9E521E444BF,04FD01C9B4EF5CBF907EC22F,); path = Sources/ContactSheet; sourceTree = "<group>"; };
+1EE63A94BAD0DF0FCB0E7B8C = { isa = PBXGroup; children = (7D1043473D55BFA90E8530D3,); name = Products; sourceTree = "<group>"; };
+325F10A6957A34D66CB8C0E4 = { isa = PBXGroup; children = (482182478A3ECD4745BEA917,1EE63A94BAD0DF0FCB0E7B8C,); sourceTree = "<group>"; };
+89E1FD6268CC0F221A2BE178 = { isa = XCBuildConfiguration; buildSettings = { MACOSX_DEPLOYMENT_TARGET = 14.0; SDKROOT = macosx; SWIFT_VERSION = 5.0; CLANG_ENABLE_MODULES = YES; }; name = Debug; };
+7082CC0B6FC1282FCEABD07A = { isa = XCBuildConfiguration; buildSettings = {PRODUCT_NAME = "Contact Sheet"; PRODUCT_BUNDLE_IDENTIFIER = "local.contact-sheet.app"; INFOPLIST_FILE = "Info.plist"; CODE_SIGN_ENTITLEMENTS = "ContactSheet.entitlements"; CODE_SIGN_IDENTITY = "-"; CODE_SIGN_STYLE = "Manual"; ENABLE_HARDENED_RUNTIME = "NO"; SWIFT_OPTIMIZATION_LEVEL = "-Onone"; SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG"; COMBINE_HIDPI_IMAGES = "YES";}; name = Debug; };
+E6DE6C99132752C914FEF632 = { isa = XCBuildConfiguration; buildSettings = { MACOSX_DEPLOYMENT_TARGET = 14.0; SDKROOT = macosx; SWIFT_VERSION = 5.0; CLANG_ENABLE_MODULES = YES; }; name = Release; };
+639A7CA24D39909E713B47F7 = { isa = XCBuildConfiguration; buildSettings = {PRODUCT_NAME = "Contact Sheet"; PRODUCT_BUNDLE_IDENTIFIER = "local.contact-sheet.app"; INFOPLIST_FILE = "Info.plist"; CODE_SIGN_ENTITLEMENTS = "ContactSheet.entitlements"; CODE_SIGN_IDENTITY = "-"; CODE_SIGN_STYLE = "Manual"; ENABLE_HARDENED_RUNTIME = "NO"; SWIFT_OPTIMIZATION_LEVEL = "-O"; SWIFT_ACTIVE_COMPILATION_CONDITIONS = ""; COMBINE_HIDPI_IMAGES = "YES";}; name = Release; };
+862894B703A6DEDF96A9DD6C = { isa = XCConfigurationList; buildConfigurations = (89E1FD6268CC0F221A2BE178,E6DE6C99132752C914FEF632,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Debug; };
+C57128001CE614BF8549D6BB = { isa = XCConfigurationList; buildConfigurations = (7082CC0B6FC1282FCEABD07A,639A7CA24D39909E713B47F7,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Debug; };
+0E8A3AD980EC179856012B7E = { isa = PBXNativeTarget; buildConfigurationList = C57128001CE614BF8549D6BB; buildPhases = (BCE16DD0260827ECF338C787,); buildRules = (); dependencies = (); name = ContactSheet; productName = "Contact Sheet"; productReference = 7D1043473D55BFA90E8530D3; productType = "com.apple.product-type.application"; };
+98F54143AB4E86B28C3AFEE0 = { isa = PBXProject; attributes = { LastUpgradeCheck = 1600; }; buildConfigurationList = 862894B703A6DEDF96A9DD6C; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; hasScannedForEncodings = 0; knownRegions = (en, Base); mainGroup = 325F10A6957A34D66CB8C0E4; productRefGroup = 1EE63A94BAD0DF0FCB0E7B8C; projectDirPath = ""; projectRoot = ""; targets = (0E8A3AD980EC179856012B7E,); };
+}; rootObject = 98F54143AB4E86B28C3AFEE0; }

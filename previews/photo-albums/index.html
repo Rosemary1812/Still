@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>相册 · 照片墙与双页阅读</title></head><body>
+<div id="cs-flow" aria-label="多相册与阅读流程原型">
+<div class="cs-window">
+<header class="cs-toolbar"><button id="cs-back" hidden>‹ 全部相册</button><span id="cs-brand">相册</span><div id="cs-modes" hidden><button data-mode="overview" aria-pressed="true">预览</button><button data-mode="book" aria-pressed="false">双页相册</button></div><button id="cs-new">＋ 新建相册</button></header>
+<main id="cs-content"></main>
+<footer><span id="cs-status" aria-live="polite"></span><span>摄影样片 · 示例文字</span></footer>
+</div>
+</div>
+<style>
+#cs-flow{color-scheme:light dark;font:14px/1.65 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;--ink:light-dark(#292923,#f0ece2);--paper:light-dark(#faf8f2,#24241f);--muted:light-dark(#77766d,#b9b6ac);--line:light-dark(#dedbd2,#47473e);color:var(--ink)}
+#cs-flow *{box-sizing:border-box}
+#cs-flow .cs-window{background:var(--paper);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+#cs-flow button,#cs-flow input,#cs-flow textarea{font:inherit;color:inherit}
+#cs-flow button{cursor:default;border:1px solid var(--line);background:var(--paper);padding:7px 13px;border-radius:8px;transition:background .15s,transform .2s}
+#cs-flow button:hover{background:light-dark(#ece9df,#38382e)}
+#cs-flow button:focus-visible{outline:3px solid #b28a4d;outline-offset:3px}
+#cs-flow button:disabled{opacity:.35}
+#cs-flow .cs-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 22px;min-height:68px;flex-wrap:wrap;border-bottom:1px solid var(--line)}
+#cs-flow #cs-brand{font:500 17px Georgia,serif;letter-spacing:-.03em}
+#cs-flow #cs-modes{display:flex;gap:3px;padding:3px;background:light-dark(#eae7de,#141511);border-radius:10px}
+#cs-flow #cs-modes button{border:0;background:transparent;color:var(--muted)}
+#cs-flow #cs-modes button[aria-pressed=true]{background:var(--paper);color:var(--ink);box-shadow:0 1px 4px #0002}
+#cs-flow .cs-heading{padding:30px 32px 24px;display:flex;justify-content:space-between;align-items:end;gap:20px}
+#cs-flow h1{font:400 29px/1.3 Georgia,'Songti SC',serif;margin:0 0 7px}
+#cs-flow h2{font:400 26px/1.4 Georgia,'Songti SC',serif;margin:8px 0 20px}
+#cs-flow p{margin:0}
+#cs-flow .cs-small{font-size:12px;color:var(--muted)}
+#cs-flow .cs-library{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:30px 24px;padding:0 32px 34px}
+#cs-flow .cs-album{border:0;padding:0;text-align:left;background:transparent;border-radius:0;min-width:0}
+#cs-flow .cs-album:hover{background:transparent;transform:translateY(-4px)}
+#cs-flow .cs-cover{aspect-ratio:1.12;position:relative;margin:0 5px 14px 0;isolation:isolate}
+#cs-flow .cs-cover:before,#cs-flow .cs-cover:after{content:'';position:absolute;inset:4px -5px -4px 5px;border-radius:4px;background:light-dark(#d5d1c6,#55554d);border:1px solid var(--line);z-index:-1}
+#cs-flow .cs-cover:after{inset:2px -2px -2px 2px;background:var(--paper)}
+#cs-flow .cs-cover img{width:100%;height:100%;object-fit:cover;border-radius:4px;box-shadow:0 6px 12px #0002}
+#cs-flow .cs-album-title{font-size:15px;display:block;margin-bottom:2px}
+#cs-flow .cs-wall-wrap{background:light-dark(#d7d5cd,#151614);padding:12px;overflow:hidden}
+#cs-flow .cs-wall{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+#cs-flow .cs-photo{padding:0;border:0;border-radius:2px;aspect-ratio:1;overflow:hidden;background:#333;box-shadow:0 3px 9px #0003;position:relative}
+#cs-flow .cs-photo img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .25s}
+#cs-flow .cs-photo:hover{transform:translateY(-3px);z-index:1;box-shadow:0 7px 18px #0005}
+#cs-flow .cs-photo:hover img{transform:scale(1.04)}
+#cs-flow .cs-detailbar{display:flex;align-items:center;justify-content:space-between;padding:20px 28px;gap:14px;flex-wrap:wrap}
+#cs-flow .cs-spread{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(240px,1fr);gap:45px;align-items:center;padding:20px 36px 32px;min-height:460px}
+#cs-flow .cs-spread>img{width:100%;height:380px;object-fit:contain}
+#cs-flow .cs-text{white-space:pre-wrap;font:16px/1.95 Georgia,'Songti SC',serif;overflow-wrap:anywhere}
+#cs-flow .cs-notefoot{margin-top:28px;font-size:11px;letter-spacing:.12em;color:var(--muted)}
+#cs-flow .cs-pages{display:flex;justify-content:space-between;align-items:center;padding:18px 32px;border-top:1px solid var(--line);gap:10px;flex-wrap:wrap}
+#cs-flow .cs-film{display:flex;gap:7px;flex-wrap:wrap;padding:16px 28px;background:light-dark(#efede5,#1a1b17)}
+#cs-flow .cs-film button{padding:0;width:52px;height:52px;border:2px solid transparent;overflow:hidden;border-radius:3px;opacity:.55}
+#cs-flow .cs-film button[aria-pressed=true]{border-color:#b28a4d;opacity:1}
+#cs-flow .cs-film img{width:100%;height:100%;object-fit:cover}
+#cs-flow .cs-editor{display:grid;gap:12px;margin-top:20px}
+#cs-flow .cs-editor label{font-size:12px;color:var(--muted);display:grid;gap:5px}
+#cs-flow input,#cs-flow textarea{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink)}
+#cs-flow .cs-editor-actions{display:flex;gap:8px}
+#cs-flow .cs-newform{max-width:480px;padding:32px;margin:auto;min-height:400px}
+#cs-flow footer{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 22px;font-size:11px;color:var(--muted);border-top:1px solid var(--line)}
+#cs-flow [hidden]{display:none!important}
+@media(max-width:650px){#cs-flow .cs-library{grid-template-columns:repeat(2,minmax(0,1fr));padding:0 18px 24px;gap:24px 15px}#cs-flow .cs-heading{padding:25px 20px}#cs-flow .cs-wall{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}#cs-flow .cs-spread{grid-template-columns:1fr;gap:25px;padding:20px}#cs-flow .cs-spread>img{height:280px}#cs-flow .cs-toolbar{padding:12px}#cs-flow h1{font-size:25px}}
+@media(prefers-reduced-motion:reduce){#cs-flow button,#cs-flow img{transition:none!important}}
+</style>
+<style>
+#cs-flow .cs-window{position:relative;container-type:inline-size}
+#cs-flow .cs-window.is-wall .cs-toolbar{position:absolute;inset:0 0 auto;z-index:5;border:0;background:transparent;pointer-events:none;padding:16px}
+#cs-flow .cs-window.is-wall .cs-toolbar>*{pointer-events:auto;box-shadow:0 3px 14px #0003}
+#cs-flow .cs-window.is-wall .cs-toolbar button,#cs-flow .cs-window.is-wall #cs-modes{background:light-dark(#fcfaf1e8,#292b25ec);backdrop-filter:blur(18px);border-radius:22px}
+#cs-flow .cs-window.is-wall #cs-modes button{box-shadow:none;background:transparent}
+#cs-flow .cs-window.is-wall #cs-modes button[aria-pressed=true]{background:light-dark(#d7d4c7,#55564a)}
+#cs-flow .cs-window.is-wall footer{display:none}
+#cs-flow .cs-wall-wrap{padding:0;background:#20211d;position:relative;touch-action:pan-y}
+#cs-flow .cs-wall{display:flex;flex-direction:column;gap:0;overflow:hidden}
+#cs-flow .cs-wall-row{display:flex;gap:0;position:relative;width:max-content;will-change:transform}
+#cs-flow .cs-wall .cs-photo{width:clamp(140px,23cqw,200px);height:clamp(140px,23cqw,200px);flex:none;aspect-ratio:1;border:0;border-radius:0;box-shadow:none;overflow:visible}
+#cs-flow .cs-wall .cs-photo img{object-fit:cover}
+#cs-flow .cs-wall .cs-photo:hover{transform:translateY(-3px) scale(1.025);box-shadow:0 8px 20px #0007;z-index:2}
+#cs-flow .cs-wall .cs-photo.chosen{transform:scale(1.055);z-index:3;box-shadow:0 8px 24px #0008}
+#cs-flow .cs-wall .cs-photo:hover img{transform:none}
+#cs-flow .is-book .cs-spread{background:linear-gradient(90deg,transparent 59%,#00000009 60%,#00000015 60.2%,transparent 61%);}
+@media(max-width:650px){#cs-flow .is-book .cs-spread{background:none}}
+#cs-flow .cs-wall-caption{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);width:min(610px,calc(100% - 32px));display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 16px;border-radius:20px;background:light-dark(#faf8f0ef,#242720f2);color:var(--ink);box-shadow:0 6px 28px #0004;backdrop-filter:blur(20px);z-index:4}
+#cs-flow .cs-wall-caption .cs-caption-copy{min-width:0}
+#cs-flow .cs-wall-caption p{font-size:12px;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;max-width:350px;color:var(--muted)}
+#cs-flow .cs-wall-caption strong{font-weight:500;font-size:14px}
+#cs-flow .cs-wall-caption button{flex-shrink:0;background:light-dark(#e8e4d8,#414336);border:0;border-radius:15px}
+@media(max-width:650px){#cs-flow .cs-wall{display:flex;gap:0}#cs-flow .cs-wall-caption{bottom:12px;gap:8px;padding:10px}#cs-flow .cs-wall-caption p{max-width:160px}#cs-flow .cs-window.is-wall .cs-toolbar{gap:6px;padding:10px}#cs-flow .cs-window.is-wall .cs-toolbar button{font-size:12px;padding:7px 10px}}
+</style>
+
+<style>
+#cs-flow .cs-window{border:0;border-radius:16px}
+#cs-flow .cs-window.is-wall{background:#111;aspect-ratio:1814/1518}
+#cs-flow .cs-wall-wrap{height:auto}
+#cs-flow .cs-wall .cs-photo{width:20.92061742cqw;height:20.92061742cqw;border-radius:0;overflow:hidden;box-shadow:none;transform:none}
+#cs-flow .cs-wall .cs-photo:hover{transform:none;box-shadow:none;filter:none}
+#cs-flow .cs-wall .cs-photo img{transform:none}
+#cs-flow .cs-window.is-wall .cs-toolbar{display:flex;justify-content:center;padding:12px 15px;gap:10px;transition:opacity .5s}
+#cs-flow .cs-window.is-wall #cs-back{position:absolute;left:15px;top:12px}
+#cs-flow .cs-window.is-wall .cs-toolbar button,#cs-flow .cs-window.is-wall #cs-modes{background:#24242480;color:#fff;border:1px solid #ffffff26;backdrop-filter:blur(22px) saturate(1.5);border-radius:22px;box-shadow:inset 0 1px 1px #ffffff30,0 2px 9px #0003}
+#cs-flow .cs-window.is-wall #cs-modes button{background:transparent;color:#fff;border:0;box-shadow:none;font-size:12px;padding:5px 12px}
+#cs-flow .cs-window.is-wall #cs-modes button[aria-pressed=true]{background:#ffffff26}
+#cs-flow .cs-wall-caption{top:12px;right:15px;bottom:auto;left:auto;transform:none;width:auto;padding:0;border-radius:22px;background:transparent;box-shadow:none;backdrop-filter:none;transition:opacity .5s}
+#cs-flow .cs-wall-caption button{background:#24242480;color:#fff;border:1px solid #ffffff26;backdrop-filter:blur(22px);border-radius:22px;font-size:12px;padding:8px 12px}
+#cs-flow .is-wall.controls-idle .cs-toolbar,#cs-flow .is-wall.controls-idle .cs-wall-caption{opacity:0}
+#cs-flow .is-wall .cs-toolbar:focus-within,#cs-flow .is-wall .cs-wall-caption:focus-within{opacity:1}
+@media(max-width:650px){#cs-flow .cs-window.is-wall .cs-toolbar{padding:8px;justify-content:center}#cs-flow .cs-window.is-wall #cs-back{left:8px;top:8px;font-size:10px;padding:6px}#cs-flow .cs-window.is-wall #cs-modes button{font-size:10px;padding:5px 6px}#cs-flow .cs-wall-caption{top:8px;right:8px}#cs-flow .cs-wall-caption button{font-size:10px;padding:6px}}
+</style>
+<style>
+html,body{margin:0;padding:0;background:#faf8f2;color-scheme:light;font-family:-apple-system,BlinkMacSystemFont,sans-serif}
+#cs-flow{color-scheme:light;min-height:100vh}
+#cs-flow .cs-window{border:0;border-radius:0;min-height:100vh}
+#cs-flow .cs-window.is-wall{min-height:0}
+#cs-flow .cs-library{gap:36px 30px;padding:0 42px 42px}
+#cs-flow .cs-heading{padding:38px 42px 30px}
+#cs-flow .cs-cover{aspect-ratio:1.1}
+#cs-flow .cs-library .cs-album-title{font-size:17px;margin-top:18px}
+#cs-flow .cs-spread>img{height:420px}
+#cs-flow .cs-spread{min-height:500px}
+#cs-flow .cs-window.is-book{background:#eeeae1}
+#cs-flow .is-book .cs-spread{margin:10px 28px 20px;background:linear-gradient(90deg,#faf8f2 58%,#ece8de 59.5%,#d6d0c3 60%,#f1ede5 60.5%,#faf8f2 62%);box-shadow:0 8px 25px #342a1812;border-radius:3px;padding:32px;gap:40px}
+#cs-flow .is-book .cs-spread article{padding:10px 6px}
+#cs-flow .is-book .cs-pages{border:0}
+#cs-flow .cs-photo img{user-select:none;-webkit-user-drag:none}
+</style><script>
+(()=>{const r=document.getElementById('cs-flow'),q=s=>r.querySelector(s),main=q('#cs-content');const src=i=>'assets/photo-'+(((i%16)+16)%16)+'.jpg';const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const seeds=[['山野之间','2026 · 春','走进山里，听见风经过树梢。'],['短暂出走','2026 · 夏','没有很远，也足够离开日常。'],['慢下来的日常','2026 · 秋','把路上值得停留的片刻，收进一本相册。'],['周末的光','2025 秋冬','收集那些让人停下来的片刻。'],['和你一起','2025.08','想记住的不只是眼前的景色。'],['一年又一年','2024—2026','把日子整理成可以翻阅的页。']];
+const captions=['没有特别的安排，只是沿着熟悉的小路走了很久。\n\n后来翻到这张照片，先想起的是当时慢下来的感觉。想把这段平常的日子也留下来。','本来只是路过，最后却在这里待了很久。\n\n照片没有拍下所有的声音和气味，所以补了这几句话。希望以后再看，能想起当时的自己。','这是那次出门最喜欢的一张。没有提前计划，也没有重新拍第二遍。\n\n有些小事只有回来以后，才发现值得记下来。','整理照片的时候，舍不得删掉这一张。\n\n想在旁边留一点文字。几年之后，也许我们还能记起这段日子为什么那么开心。'];
+let albums=seeds.slice(0,3).map((s,a)=>({title:s[0],date:s[1],intro:s[2],cover:a,photos:Array.from({length:16},(_,i)=>({image:(i+a)%16,title:['把这一天夹进相册','停下来，多看一会儿','没有写进计划的片刻','留给以后的我们'][i%4],meta:s[1]+' · 第 '+(i+1)+' 个片刻',text:captions[i%4]}))}));let album=null,mode='overview',selected=null,creating=false;
+try{const saved=JSON.parse(localStorage.getItem('contact-sheet-photo-albums')||'null');if(Array.isArray(saved)&&saved.length&&saved.every(a=>typeof a.title==='string'&&Array.isArray(a.photos)&&a.photos.length===16))albums=saved}catch{}
+function save(){try{localStorage.setItem('contact-sheet-photo-albums',JSON.stringify(albums))}catch{}window.openai?.setWidgetState?.({modelContent:{screen:album===null?'全部相册':mode,album:album===null?null:albums[album].title,selected},privateContent:{album,mode,selected}})?.catch(()=>{});}
+function openAlbum(i){album=i;mode='overview';selected=null;draw();save()}
+function img(p){return `<img src="${src(p.image)}" alt="${esc(p.title)}">`}
+function heading(a){return `<div class="cs-heading"><div><h1>${esc(a.title)}</h1><p class="cs-small">${esc(a.intro)}</p></div><span class="cs-small">${a.photos.length} 张 · ${esc(a.date)}</span></div>`}
+let stopMotion=()=>{};const wallPositions=new Map();let paused=matchMedia('(prefers-reduced-motion: reduce)').matches;
+function draw(){stopMotion();stopMotion=()=>{};q('.cs-window').classList.toggle('is-book',album!==null&&mode==='book'&&!creating);q('.cs-window').classList.toggle('is-wall',album!==null&&mode==='overview'&&selected===null&&!creating);q('#cs-back').hidden=album===null&&!creating;q('#cs-brand').hidden=album!==null||creating;q('#cs-modes').hidden=album===null||creating;q('#cs-new').hidden=album!==null||creating;q('#cs-status').textContent=album===null?'我的相册 · '+albums.length+' 本':albums[album].title+' / '+(mode==='book'?'双页阅读':selected===null?'照片预览':'单张预览');
+q('#cs-modes').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.mode===mode));
+if(creating){main.innerHTML=`<form class="cs-newform cs-editor"><h1>一本新的相册</h1><label>相册名称<input name="title" required placeholder="例如：夏天的海边"></label><label>相册简介<input name="intro" placeholder="关于这本相册的一句话"></label><div class="cs-editor-actions"><button type="submit">创建相册</button><button type="button" id="cs-cancel-new">取消</button></div><p class="cs-small">新相册将放入摄影样片，便于体验整理与阅读。</p></form>`;main.querySelector('form').onsubmit=e=>{e.preventDefault();const f=e.target;albums.push({title:f.elements.title.value.trim()||'未命名相册',intro:f.elements.intro.value,date:'新相册',cover:albums.length%6,photos:seeds.length?albums[0].photos.map(p=>({...p})):[]});creating=false;openAlbum(albums.length-1)};q('#cs-cancel-new').onclick=()=>{creating=false;draw()};return}
+if(album===null){main.innerHTML=`<div class="cs-heading"><div><h1>我的相册</h1><p class="cs-small">每一本，装着一段不同的日子。</p></div><span class="cs-small">${albums.length} 本相册</span></div><div class="cs-library">${albums.map((a,i)=>`<button class="cs-album" data-album="${i}"><div class="cs-cover"><img src="${src(a.cover)}" alt="${esc(a.title)}封面"></div><span class="cs-album-title">${esc(a.title)}</span><span class="cs-small">${esc(a.date)} · ${a.photos.length} 张</span></button>`).join('')}</div>`;main.querySelectorAll('[data-album]').forEach(b=>b.onclick=()=>openAlbum(+b.dataset.album));return}
+const a=albums[album];if(mode==='overview'&&selected===null){
+const offsets=[(151-379.5)/379.5,(296-379.5)/379.5,(62-379.5)/379.5,(207-379.5)/379.5];
+main.innerHTML=`<div class="cs-wall-wrap"><div class="cs-wall">${offsets.map((offset,row)=>`<div class="cs-wall-row">${Array.from({length:16},(_,col)=>{const i=(row*4+(col+3)%4)%a.photos.length,p=a.photos[i];return `<button class="cs-photo" data-photo="${i}" aria-label="查看照片与描述：${esc(p.title)}">${img(p)}</button>`}).join('')}</div>`).join('')}</div><div class="cs-wall-caption"><button id="cs-motion" aria-pressed="${paused}">${paused?'继续流动':'暂停流动'}</button><button id="cs-start" hidden>双页阅读</button></div></div>`;
+const wallAlbum=album,wrap=q('.cs-wall-wrap'),rows=[...main.querySelectorAll('.cs-wall-row')];let drag=null,moved=false,hover=false,focusWithin=false,shifts=wallPositions.get(album)||[0,0,0,0],frame=0,last=0;
+let size=main.querySelector('.cs-photo').getBoundingClientRect().width;
+function move(){rows.forEach((el,i)=>{const period=size*4,raw=offsets[i]*size+shifts[i];const mod=((raw%period)+period)%period-period;el.style.transform=`translate3d(${mod}px,0,0)`})}
+const resize=new ResizeObserver(()=>{size=main.querySelector('.cs-photo')?.getBoundingClientRect().width||size;move()});resize.observe(wrap);
+function tick(time){if(!wrap.isConnected)return;const dt=last?Math.min((time-last)/1000,.05):0;last=time;if(!paused&&!focusWithin&&!drag&&!document.hidden){shifts=shifts.map((x,i)=>x-dt*(171/7.739)*(size/379.5));move()}frame=requestAnimationFrame(tick)}
+let idle;const shell=q('.cs-window');function wake(){shell.classList.remove('controls-idle');clearTimeout(idle);idle=setTimeout(()=>shell.classList.add('controls-idle'),2200)}shell.onpointermove=wake;shell.onfocusin=wake;wake();move();frame=requestAnimationFrame(tick);stopMotion=()=>{clearTimeout(idle);shell.onpointermove=null;shell.onfocusin=null;shell.classList.remove('controls-idle');cancelAnimationFrame(frame);resize.disconnect();wallPositions.set(wallAlbum,shifts.slice())};
+main.querySelectorAll('[data-photo]').forEach(b=>b.onclick=()=>{if(moved){moved=false;return}selected=+b.dataset.photo;draw();save()});
+wrap.addEventListener('pointerenter',e=>{if(e.pointerType==='mouse')hover=true});wrap.addEventListener('focusin',e=>{focusWithin=e.target.matches(':focus-visible')});wrap.addEventListener('focusout',e=>{focusWithin=wrap.contains(e.relatedTarget)});
+wrap.addEventListener('pointerdown',e=>{focusWithin=false;if(!e.target.closest('.cs-photo'))return;drag={x:e.clientX,shifts:shifts.slice()};moved=false});
+wrap.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x;if(Math.abs(dx)>6){moved=true;shifts=drag.shifts.map(x=>x+dx);move()}});
+wrap.addEventListener('pointerup',()=>{drag=null});wrap.addEventListener('pointerleave',()=>{drag=null;hover=false});wrap.addEventListener('pointercancel',()=>{drag=null});wrap.addEventListener('dragstart',e=>e.preventDefault());
+wrap.addEventListener('wheel',e=>{if(Math.abs(e.deltaX)>Math.abs(e.deltaY)){e.preventDefault();shifts=shifts.map(x=>x-e.deltaX);move()}},{passive:false});
+q('#cs-motion').onclick=e=>{paused=!paused;e.currentTarget.textContent=paused?'继续流动':'暂停流动';e.currentTarget.setAttribute('aria-pressed',paused)};
+q('#cs-start').onclick=()=>{selected=0;mode='book';draw();save()};return}
+if(selected===null)selected=0;const p=a.photos[selected];main.innerHTML=`<div class="cs-detailbar"><button id="cs-grid">‹ 照片预览</button><span class="cs-small">${esc(a.title)} · ${selected+1} / ${a.photos.length}</span>${mode==='overview'?'<button id="cs-read">用双页相册阅读 →</button>':'<span class="cs-small">'+esc(a.date)+'</span>'}</div><div class="cs-spread">${img(p)}<article><div class="cs-small">${esc(p.meta)}</div><h2>${esc(p.title)}</h2><p class="cs-text">${esc(p.text)||'为这张照片写下第一段回忆。'}</p><div class="cs-notefoot">${String(selected+1).padStart(2,'0')} / ${esc(a.title)}</div><button id="cs-edit" style="margin-top:20px">编辑描述</button><form class="cs-editor" hidden><label>照片标题<input name="title" value="${esc(p.title)}"></label><label>照片描述<textarea name="text" rows="5">${esc(p.text)}</textarea></label><div class="cs-editor-actions"><button type="submit">保存</button><button type="button" id="cs-cancel">取消</button></div></form></article></div>${mode==='overview'?`<div class="cs-film">${a.photos.map((x,i)=>`<button data-photo="${i}" aria-label="第 ${i+1} 张" aria-pressed="${i===selected}">${img(x)}</button>`).join('')}</div>`:''}<div class="cs-pages"><button id="cs-prev" ${selected===0?'disabled':''}>← 上一${mode==='book'?'页':'张'}</button><span class="cs-small">${selected+1} / ${a.photos.length}</span><button id="cs-next" ${selected===a.photos.length-1?'disabled':''}>下一${mode==='book'?'页':'张'} →</button></div>`;
+q('#cs-grid').onclick=()=>{selected=null;mode='overview';draw();save()};if(q('#cs-read'))q('#cs-read').onclick=()=>{mode='book';draw();save()};q('#cs-prev').onclick=()=>step(-1);q('#cs-next').onclick=()=>step(1);main.querySelectorAll('[data-photo]').forEach(b=>b.onclick=()=>{selected=+b.dataset.photo;draw();save()});const form=main.querySelector('form');q('#cs-edit').onclick=()=>{form.hidden=false;q('#cs-edit').hidden=true;form.elements.text.focus()};q('#cs-cancel').onclick=()=>draw();form.onsubmit=e=>{e.preventDefault();p.title=form.elements.title.value;p.text=form.elements.text.value;save();draw()};}
+function step(d){if(album===null||selected===null)return;selected=Math.max(0,Math.min(albums[album].photos.length-1,selected+d));draw();save()}
+q('#cs-back').onclick=()=>{album=null;creating=false;selected=null;draw();save()};q('#cs-new').onclick=()=>{creating=true;draw()};q('#cs-modes').querySelectorAll('button').forEach(b=>b.onclick=()=>{mode=b.dataset.mode;if(mode==='book'&&selected===null)selected=0;else if(mode==='overview')selected=null;draw();save()});r.addEventListener('keydown',e=>{if(['INPUT','TEXTAREA'].includes(e.target.tagName))return;if(e.key==='ArrowRight'){e.preventDefault();step(1)}if(e.key==='ArrowLeft'){e.preventDefault();step(-1)}if(e.key==='Escape'&&album!==null){if(selected===null&&mode==='overview')album=null;selected=null;mode='overview';draw();save()}});draw();
+})();
+</script>
+
+</body></html>
