@@ -1,4 +1,10 @@
+#if os(iOS)
+import UIKit
+typealias PlatformPhotoImage = UIImage
+#else
 import AppKit
+typealias PlatformPhotoImage = NSImage
+#endif
 import Photos
 import PhotosUI
 import SwiftUI
@@ -9,12 +15,12 @@ struct PhotoAlbumSource: Identifiable { let id: String; let title: String; let c
 struct PhotoCandidate: Identifiable { let id: String; let date: Date?; let location: String? }
 private final class ImageRequestState: @unchecked Sendable {
     private let lock = NSLock()
-    private var continuation: CheckedContinuation<NSImage?, Never>?
+    private var continuation: CheckedContinuation<PlatformPhotoImage?, Never>?
     private var finished = false
     private var requestID: PHImageRequestID?
-    func install(_ c: CheckedContinuation<NSImage?, Never>) { lock.lock(); if finished { lock.unlock(); c.resume(returning: nil) } else { continuation = c; lock.unlock() } }
+    func install(_ c: CheckedContinuation<PlatformPhotoImage?, Never>) { lock.lock(); if finished { lock.unlock(); c.resume(returning: nil) } else { continuation = c; lock.unlock() } }
     func setID(_ id: PHImageRequestID, manager: PHImageManager) { lock.lock(); requestID = id; let done = finished; lock.unlock(); if done { manager.cancelImageRequest(id) } }
-    func finish(_ image: NSImage?) { lock.lock(); guard !finished else { lock.unlock(); return }; finished = true; let c = continuation; continuation = nil; lock.unlock(); c?.resume(returning: image) }
+    func finish(_ image: PlatformPhotoImage?) { lock.lock(); guard !finished else { lock.unlock(); return }; finished = true; let c = continuation; continuation = nil; lock.unlock(); c?.resume(returning: image) }
     func cancel(manager: PHImageManager) { lock.lock(); let id = requestID; lock.unlock(); if let id { manager.cancelImageRequest(id) }; finish(nil) }
 }
 @MainActor
@@ -23,7 +29,7 @@ final class PhotoRepository: NSObject, ObservableObject, PHPhotoLibraryChangeObs
     @Published var revision = 0
     @Published var lastError: String?
     private let manager = PHCachingImageManager()
-    private let cache = NSCache<NSString, NSImage>()
+    private let cache = NSCache<NSString, PlatformPhotoImage>()
     private let importsURL: URL
     init(importsURL: URL? = nil, observeLibrary: Bool = true) {
         self.importsURL = importsURL ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("ContactSheet/Imports", isDirectory: true)
@@ -124,7 +130,7 @@ final class PhotoRepository: NSObject, ObservableObject, PHPhotoLibraryChangeObs
         try Task.checkCancellation()
         return try await importBytes(data)
     }
-    func loadImage(id: String, size: CGSize) async -> NSImage? {
+    func loadImage(id: String, size: CGSize) async -> PlatformPhotoImage? {
         guard !Task.isCancelled else { return nil }
         if localURL(id) == nil {
             let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
@@ -134,11 +140,15 @@ final class PhotoRepository: NSObject, ObservableObject, PHPhotoLibraryChangeObs
         let width = max(1, min(4096, size.width)), height = max(1, min(4096, size.height))
         let key = "\(id)-\(Int(width))-\(Int(height))-\(revision)" as NSString
         if let image = cache.object(forKey: key) { return image }
-        let image: NSImage?
+        let image: PlatformPhotoImage?
         if let url = localURL(id) {
             image = await Task.detached(priority: .userInitiated) {
-                guard let source = CGImageSourceCreateWithURL(url as CFURL, nil), let cg = CGImageSourceCreateThumbnailAtIndex(source, 0, [kCGImageSourceCreateThumbnailFromImageAlways: true, kCGImageSourceCreateThumbnailWithTransform: true, kCGImageSourceThumbnailMaxPixelSize: max(width, height)] as CFDictionary) else { return nil as NSImage? }
+                guard let source = CGImageSourceCreateWithURL(url as CFURL, nil), let cg = CGImageSourceCreateThumbnailAtIndex(source, 0, [kCGImageSourceCreateThumbnailFromImageAlways: true, kCGImageSourceCreateThumbnailWithTransform: true, kCGImageSourceThumbnailMaxPixelSize: max(width, height)] as CFDictionary) else { return nil as PlatformPhotoImage? }
+                #if os(iOS)
+                return UIImage(cgImage: cg)
+                #else
                 return NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
+                #endif
             }.value
         } else if let asset = asset(id) {
             let state = ImageRequestState(); let manager = manager
