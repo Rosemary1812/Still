@@ -1,0 +1,623 @@
+[
+  {
+    "outputFrame": 0,
+    "alignedMs": 0.0,
+    "webFrame": 16,
+    "webMs": 463,
+    "nativeFrame": 81,
+    "nativeSeconds": 1.533333,
+    "webHeld": false
+  },
+  {
+    "outputFrame": 1,
+    "alignedMs": 33.333333333333336,
+    "webFrame": 17,
+    "webMs": 494,
+    "nativeFrame": 83,
+    "nativeSeconds": 1.566667,
+    "webHeld": false
+  },
+  {
+    "outputFrame": 2,
+    "alignedMs": 66.66666666666667,
+    "webFrame": 19,
+    "webMs": 526,
+    "nativeFrame": 85,
+    "nativeSeconds": 1.6,
+    "webHeld": false
+  },
+  {
+    "outputFrame": 3,
+    "alignedMs": 100.0,
+    "webFrame": 21,
+    "webMs": 559,
+    "nativeFrame": 87,
+    "nativeSeconds": 1.633333,
+    "webHeld": false
+  },
+  {
+    "outputFrame": 4,
+    "alignedMs": 133.33333333333334,
+    "webFrame": 23,
+    "webMs": 592,
+    "nativeFrame": 88,
+    "nativeSeconds": 1.666667,
+    "webHeld": false
+  },
+  {
+    "outputFrame": 5,
+    "alignedMs": 166.66666666666666,
+    "webFrame": 25,
+    "webMs": 627,
+    "nativeFrame": 90,
+    "nativeSeconds": 1.7,
+    "webHeld": false
+  },
+  {
+    "outputFrame": 6,
+    "alignedMs": 200.0,
+    "webFrame": 27,
+    "webMs": 658,
+    "nativeFrame": 92,
+    "nativeSeconds": 1.733333,
+    "webHeld": false
+  },
+  {
+    "outputFrame": 7,
+    "alignedMs": 233.33333333333334,
+    "webFrame": 29,
+    "webMs": 693,
+    "nativeFrame": 94,
+    "nativeSeconds": 1.766667,
+    "webHeld": false
+  },
+  {
+    "outputFrame": 8,
+    "alignedMs": 266.6666666666667,
+    "webFrame": 31,
+    "webMs": 726,
+    "nativeFrame": 95,
+    "nativeSeconds": 1.783333,
+    "webHeld": false
+  },
+  {
+    "outputFrame": 9,
+    "alignedMs": 300.0,
+    "webFrame": 33,
+    "webMs": 760,
+    "nativeFrame": 96,
+    "nativeSeconds": 1.816667,
+    "webHeld": false
+  },
+  {
+    "outputFrame": 10,
+    "alignedMs": 333.3333333333333,
+    "webFrame": 35,
+    "webMs": 794,
+    "nativeFrame": 97,
+    "nativeSeconds": 1.85,
+    "webHeld": false
+  },
+  {
+    "outputFrame": 11,
+    "alignedMs": 366.6666666666667,
+    "webFrame": 37,
+    "webMs": 827,
+    "nativeFrame": 98,
+    "nativeSeconds": 1.883333,
+    "webHeld": false
+  },
+  {
+    "outputFrame": 12,
+    "alignedMs": 400.0,
+    "webFrame": 39,
+    "webMs": 860,
+    "nativeFrame": 99,
+    "nativeSeconds": 1.916667,
+    "webHeld": false
+  },
+  {
+    "outputFrame": 13,
+    "alignedMs": 433.3333333333333,
+    "webFrame": 41,
+    "webMs": 894,
+    "nativeFrame": 100,
+    "nativeSeconds": 1.95,
+    "webHeld": false
+  },
+  {
+    "outputFrame": 14,
+    "alignedMs": 466.6666666666667,
+    "webFrame": 43,
+    "webMs": 927,
+    "nativeFrame": 101,
+    "nativeSeconds": 2.0,
+    "webHeld": false
+  },
+  {
+    "outputFrame": 15,
+    "alignedMs": 500.0,
+    "webFrame": 45,
+    "webMs": 963,
+    "nativeFrame": 102,
+    "nativeSeconds": 2.033333,
+    "webHeld": false
+  },
+  {
+    "outputFrame": 16,
+    "alignedMs": 533.3333333333334,
+    "webFrame": 47,
+    "webMs": 996,
+    "nativeFrame": 103,
+    "nativeSeconds": 2.066667,
+    "webHeld": false
+  },
+  {
+    "outputFrame": 17,
+    "alignedMs": 566.6666666666666,
+    "webFrame": 48,
+    "webMs": 1028,
+    "nativeFrame": 104,
+    "nativeSeconds": 2.1,
+    "webHeld": false
+  },
+  {
+    "outputFrame": 18,
+    "alignedMs": 600.0,
+    "webFrame": 50,
+    "webMs": 1062,
+    "nativeFrame": 105,
+    "nativeSeconds": 2.133333,
+    "webHeld": false
+  },
+  {
+    "outputFrame": 19,
+    "alignedMs": 633.3333333333334,
+    "webFrame": 52,
+    "webMs": 1097,
+    "nativeFrame": 106,
+    "nativeSeconds": 2.183333,
+    "webHeld": false
+  },
+  {
+    "outputFrame": 20,
+    "alignedMs": 666.6666666666666,
+    "webFrame": 54,
+    "webMs": 1129,
+    "nativeFrame": 106,
+    "nativeSeconds": 2.183333,
+    "webHeld": false
+  },
+  {
+    "outputFrame": 21,
+    "alignedMs": 700.0,
+    "webFrame": 56,
+    "webMs": 1163,
+    "nativeFrame": 107,
+    "nativeSeconds": 2.216667,
+    "webHeld": false
+  },
+  {
+    "outputFrame": 22,
+    "alignedMs": 733.3333333333334,
+    "webFrame": 58,
+    "webMs": 1197,
+    "nativeFrame": 108,
+    "nativeSeconds": 2.266667,
+    "webHeld": false
+  },
+  {
+    "outputFrame": 23,
+    "alignedMs": 766.6666666666666,
+    "webFrame": 59,
+    "webMs": 1232,
+    "nativeFrame": 109,
+    "nativeSeconds": 2.3,
+    "webHeld": false
+  },
+  {
+    "outputFrame": 24,
+    "alignedMs": 800.0,
+    "webFrame": 60,
+    "webMs": 1263,
+    "nativeFrame": 110,
+    "nativeSeconds": 2.333333,
+    "webHeld": false
+  },
+  {
+    "outputFrame": 25,
+    "alignedMs": 833.3333333333334,
+    "webFrame": 61,
+    "webMs": 1297,
+    "nativeFrame": 111,
+    "nativeSeconds": 2.35,
+    "webHeld": false
+  },
+  {
+    "outputFrame": 26,
+    "alignedMs": 866.6666666666666,
+    "webFrame": 63,
+    "webMs": 1330,
+    "nativeFrame": 112,
+    "nativeSeconds": 2.383333,
+    "webHeld": false
+  },
+  {
+    "outputFrame": 27,
+    "alignedMs": 900.0,
+    "webFrame": 65,
+    "webMs": 1363,
+    "nativeFrame": 113,
+    "nativeSeconds": 2.416667,
+    "webHeld": false
+  },
+  {
+    "outputFrame": 28,
+    "alignedMs": 933.3333333333334,
+    "webFrame": 67,
+    "webMs": 1396,
+    "nativeFrame": 114,
+    "nativeSeconds": 2.45,
+    "webHeld": false
+  },
+  {
+    "outputFrame": 29,
+    "alignedMs": 966.6666666666666,
+    "webFrame": 69,
+    "webMs": 1430,
+    "nativeFrame": 115,
+    "nativeSeconds": 2.5,
+    "webHeld": false
+  },
+  {
+    "outputFrame": 30,
+    "alignedMs": 1000.0,
+    "webFrame": 71,
+    "webMs": 1462,
+    "nativeFrame": 117,
+    "nativeSeconds": 2.533333,
+    "webHeld": false
+  },
+  {
+    "outputFrame": 31,
+    "alignedMs": 1033.3333333333333,
+    "webFrame": 73,
+    "webMs": 1496,
+    "nativeFrame": 118,
+    "nativeSeconds": 2.566667,
+    "webHeld": false
+  },
+  {
+    "outputFrame": 32,
+    "alignedMs": 1066.6666666666667,
+    "webFrame": 75,
+    "webMs": 1529,
+    "nativeFrame": 119,
+    "nativeSeconds": 2.6,
+    "webHeld": false
+  },
+  {
+    "outputFrame": 33,
+    "alignedMs": 1100.0,
+    "webFrame": 77,
+    "webMs": 1563,
+    "nativeFrame": 120,
+    "nativeSeconds": 2.65,
+    "webHeld": false
+  },
+  {
+    "outputFrame": 34,
+    "alignedMs": 1133.3333333333333,
+    "webFrame": 79,
+    "webMs": 1597,
+    "nativeFrame": 120,
+    "nativeSeconds": 2.65,
+    "webHeld": false
+  },
+  {
+    "outputFrame": 35,
+    "alignedMs": 1166.6666666666667,
+    "webFrame": 79,
+    "webMs": 1597,
+    "nativeFrame": 121,
+    "nativeSeconds": 2.7,
+    "webHeld": true
+  },
+  {
+    "outputFrame": 36,
+    "alignedMs": 1200.0,
+    "webFrame": 79,
+    "webMs": 1597,
+    "nativeFrame": 122,
+    "nativeSeconds": 2.733333,
+    "webHeld": true
+  },
+  {
+    "outputFrame": 37,
+    "alignedMs": 1233.3333333333333,
+    "webFrame": 79,
+    "webMs": 1597,
+    "nativeFrame": 123,
+    "nativeSeconds": 2.783333,
+    "webHeld": true
+  },
+  {
+    "outputFrame": 38,
+    "alignedMs": 1266.6666666666667,
+    "webFrame": 79,
+    "webMs": 1597,
+    "nativeFrame": 124,
+    "nativeSeconds": 2.8,
+    "webHeld": true
+  },
+  {
+    "outputFrame": 39,
+    "alignedMs": 1300.0,
+    "webFrame": 79,
+    "webMs": 1597,
+    "nativeFrame": 125,
+    "nativeSeconds": 2.85,
+    "webHeld": true
+  },
+  {
+    "outputFrame": 40,
+    "alignedMs": 1333.3333333333333,
+    "webFrame": 79,
+    "webMs": 1597,
+    "nativeFrame": 125,
+    "nativeSeconds": 2.85,
+    "webHeld": true
+  },
+  {
+    "outputFrame": 41,
+    "alignedMs": 1366.6666666666667,
+    "webFrame": 79,
+    "webMs": 1597,
+    "nativeFrame": 126,
+    "nativeSeconds": 2.883333,
+    "webHeld": true
+  },
+  {
+    "outputFrame": 42,
+    "alignedMs": 1400.0,
+    "webFrame": 79,
+    "webMs": 1597,
+    "nativeFrame": 127,
+    "nativeSeconds": 2.916667,
+    "webHeld": true
+  },
+  {
+    "outputFrame": 43,
+    "alignedMs": 1433.3333333333333,
+    "webFrame": 79,
+    "webMs": 1597,
+    "nativeFrame": 128,
+    "nativeSeconds": 2.95,
+    "webHeld": true
+  },
+  {
+    "outputFrame": 44,
+    "alignedMs": 1466.6666666666667,
+    "webFrame": 79,
+    "webMs": 1597,
+    "nativeFrame": 129,
+    "nativeSeconds": 2.983333,
+    "webHeld": true
+  },
+  {
+    "outputFrame": 45,
+    "alignedMs": 1500.0,
+    "webFrame": 79,
+    "webMs": 1597,
+    "nativeFrame": 130,
+    "nativeSeconds": 3.016667,
+    "webHeld": true
+  },
+  {
+    "outputFrame": 46,
+    "alignedMs": 1533.3333333333333,
+    "webFrame": 79,
+    "webMs": 1597,
+    "nativeFrame": 131,
+    "nativeSeconds": 3.05,
+    "webHeld": true
+  },
+  {
+    "outputFrame": 47,
+    "alignedMs": 1566.6666666666667,
+    "webFrame": 79,
+    "webMs": 1597,
+    "nativeFrame": 132,
+    "nativeSeconds": 3.083333,
+    "webHeld": true
+  },
+  {
+    "outputFrame": 48,
+    "alignedMs": 1600.0,
+    "webFrame": 79,
+    "webMs": 1597,
+    "nativeFrame": 133,
+    "nativeSeconds": 3.116667,
+    "webHeld": true
+  },
+  {
+    "outputFrame": 49,
+    "alignedMs": 1633.3333333333333,
+    "webFrame": 79,
+    "webMs": 1597,
+    "nativeFrame": 134,
+    "nativeSeconds": 3.15,
+    "webHeld": true
+  },
+  {
+    "outputFrame": 50,
+    "alignedMs": 1666.6666666666667,
+    "webFrame": 79,
+    "webMs": 1597,
+    "nativeFrame": 135,
+    "nativeSeconds": 3.183333,
+    "webHeld": true
+  },
+  {
+    "outputFrame": 51,
+    "alignedMs": 1700.0,
+    "webFrame": 79,
+    "webMs": 1597,
+    "nativeFrame": 136,
+    "nativeSeconds": 3.216667,
+    "webHeld": true
+  },
+  {
+    "outputFrame": 52,
+    "alignedMs": 1733.3333333333333,
+    "webFrame": 79,
+    "webMs": 1597,
+    "nativeFrame": 138,
+    "nativeSeconds": 3.266667,
+    "webHeld": true
+  },
+  {
+    "outputFrame": 53,
+    "alignedMs": 1766.6666666666667,
+    "webFrame": 79,
+    "webMs": 1597,
+    "nativeFrame": 139,
+    "nativeSeconds": 3.316667,
+    "webHeld": true
+  },
+  {
+    "outputFrame": 54,
+    "alignedMs": 1800.0,
+    "webFrame": 79,
+    "webMs": 1597,
+    "nativeFrame": 140,
+    "nativeSeconds": 3.333333,
+    "webHeld": true
+  },
+  {
+    "outputFrame": 55,
+    "alignedMs": 1833.3333333333333,
+    "webFrame": 79,
+    "webMs": 1597,
+    "nativeFrame": 141,
+    "nativeSeconds": 3.366667,
+    "webHeld": true
+  },
+  {
+    "outputFrame": 56,
+    "alignedMs": 1866.6666666666667,
+    "webFrame": 79,
+    "webMs": 1597,
+    "nativeFrame": 142,
+    "nativeSeconds": 3.4,
+    "webHeld": true
+  },
+  {
+    "outputFrame": 57,
+    "alignedMs": 1900.0,
+    "webFrame": 79,
+    "webMs": 1597,
+    "nativeFrame": 143,
+    "nativeSeconds": 3.45,
+    "webHeld": true
+  },
+  {
+    "outputFrame": 58,
+    "alignedMs": 1933.3333333333333,
+    "webFrame": 79,
+    "webMs": 1597,
+    "nativeFrame": 143,
+    "nativeSeconds": 3.45,
+    "webHeld": true
+  },
+  {
+    "outputFrame": 59,
+    "alignedMs": 1966.6666666666667,
+    "webFrame": 79,
+    "webMs": 1597,
+    "nativeFrame": 145,
+    "nativeSeconds": 3.5,
+    "webHeld": true
+  },
+  {
+    "outputFrame": 60,
+    "alignedMs": 2000.0,
+    "webFrame": 79,
+    "webMs": 1597,
+    "nativeFrame": 146,
+    "nativeSeconds": 3.533333,
+    "webHeld": true
+  },
+  {
+    "outputFrame": 61,
+    "alignedMs": 2033.3333333333333,
+    "webFrame": 79,
+    "webMs": 1597,
+    "nativeFrame": 147,
+    "nativeSeconds": 3.566667,
+    "webHeld": true
+  },
+  {
+    "outputFrame": 62,
+    "alignedMs": 2066.6666666666665,
+    "webFrame": 79,
+    "webMs": 1597,
+    "nativeFrame": 149,
+    "nativeSeconds": 3.6,
+    "webHeld": true
+  },
+  {
+    "outputFrame": 63,
+    "alignedMs": 2100.0,
+    "webFrame": 79,
+    "webMs": 1597,
+    "nativeFrame": 151,
+    "nativeSeconds": 3.633333,
+    "webHeld": true
+  },
+  {
+    "outputFrame": 64,
+    "alignedMs": 2133.3333333333335,
+    "webFrame": 79,
+    "webMs": 1597,
+    "nativeFrame": 153,
+    "nativeSeconds": 3.666667,
+    "webHeld": true
+  },
+  {
+    "outputFrame": 65,
+    "alignedMs": 2166.6666666666665,
+    "webFrame": 79,
+    "webMs": 1597,
+    "nativeFrame": 154,
+    "nativeSeconds": 3.683333,
+    "webHeld": true
+  },
+  {
+    "outputFrame": 66,
+    "alignedMs": 2200.0,
+    "webFrame": 79,
+    "webMs": 1597,
+    "nativeFrame": 156,
+    "nativeSeconds": 3.733333,
+    "webHeld": true
+  },
+  {
+    "outputFrame": 67,
+    "alignedMs": 2233.3333333333335,
+    "webFrame": 79,
+    "webMs": 1597,
+    "nativeFrame": 158,
+    "nativeSeconds": 3.766667,
+    "webHeld": true
+  },
+  {
+    "outputFrame": 68,
+    "alignedMs": 2266.6666666666665,
+    "webFrame": 79,
+    "webMs": 1597,
+    "nativeFrame": 160,
+    "nativeSeconds": 3.8,
+    "webHeld": true
+  }
+]
