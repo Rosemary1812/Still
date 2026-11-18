@@ -1,0 +1,19 @@
+{
+  "nativeSuccessfulCapture": "native-replay.mov",
+  "nativeFrames": 305,
+  "nativeDurationSeconds": 7.15,
+  "webDenseFrames": 80,
+  "webDenseTimestampRangeMs": [
+    0,
+    1597
+  ],
+  "webDenseSource": "Preserved previous-turn screenshot sampling; current-turn low-density captures also saved",
+  "nativeSourceSHA256": "17498eb485f21796172463e07adae9f62019884dbef87dde2734463ec57f5ffa",
+  "sourceBranch": "codex/album-shelf-entrance",
+  "comparisonAlignment": {
+    "webFirstFrame": 16,
+    "webFirstMs": 463,
+    "nativeFirstFrame": 81,
+    "nativeFirstSeconds": 1.533333
+  }
+}
