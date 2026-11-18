@@ -31,7 +31,6 @@ import AppKit
                             replay += 1
                         }
                     }
-                    Button("重播入场") { replay += 1 }
                     Button("保存预览") { savePreview() }
                 }
                 .task(id: sampleCount) {
@@ -66,8 +65,7 @@ import AppKit
         view.cacheDisplay(in: view.bounds, to: bitmap)
         let folder = URL(fileURLWithPath: root).appendingPathComponent("docs/cabinet-validation")
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let mode = UserDefaults.standard.string(forKey: "albumGalleryPresentation") ?? "covers"
-        let destination = folder.appendingPathComponent("\(mode)-\(sampleCount).png")
+        let destination = folder.appendingPathComponent("cabinet-\(sampleCount).png")
         if let data = bitmap.representation(using: .png, properties: [:]) {
             try? data.write(to: destination)
         }

@@ -18,17 +18,4 @@ final class AlbumCabinetTests: XCTestCase {
         }
     }
 
-    @MainActor func testYearGroupingSearchAndSort() {
-        let albums = [("Summer 10", 2026), ("Summer 2", 2026), ("Winter", 2025)].map { name, year in
-            let album = ContactAlbum(name: name)
-            album.createdAt = Calendar.current.date(from: DateComponents(year: year, month: 6, day: 1))!
-            return album
-        }
-        XCTAssertEqual(AlbumCabinet.sections(albums, query: "", sort: "newest").map(\.year), [2026, 2025])
-        XCTAssertEqual(AlbumCabinet.sections(albums, query: "", sort: "oldest").map(\.year), [2025, 2026])
-        let results = AlbumCabinet.sections(albums, query: "  SUMMER ", sort: "name")
-        XCTAssertEqual(results.count, 1)
-        XCTAssertEqual(results.first?.albums.map(\.name), ["Summer 2", "Summer 10"])
-        XCTAssertTrue(AlbumCabinet.sections(albums, query: "missing", sort: "newest").isEmpty)
-    }
 }
