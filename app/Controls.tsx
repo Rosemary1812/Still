@@ -15,10 +15,11 @@ const lines = {
   plus: ["M12 5v14", "M5 12h14"],
   settings: ["M9.3 3.5l.7-2h4l.7 2 2.2 1.3 2.2-.4 2 3.5-1.4 1.7v2.7l1.4 1.7-2 3.5-2.2-.4-2.2 1.3-.7 2h-4l-.7-2-2.2-1.3-2.2.4-2-3.5 1.4-1.7V9.6L2.9 7.9l2-3.5 2.2.4z", "M15.4 11a3.4 3.4 0 1 1-6.8 0 3.4 3.4 0 0 1 6.8 0z"],
   cabinet: ["M5 8h14", "M7 5h10", "M9 2.5h6"],
+  close: ["M6 6l12 12", "M18 6L6 18"],
   grid: [],
 } as const;
 type Symbol = keyof typeof lines;
-const paths = { plus: lines.plus.map(p => new Path2D(p)), settings: lines.settings.map(p => new Path2D(p)), cabinet: lines.cabinet.map(p => new Path2D(p)), grid: [] };
+const paths = { plus: lines.plus.map(p => new Path2D(p)), settings: lines.settings.map(p => new Path2D(p)), cabinet: lines.cabinet.map(p => new Path2D(p)), close: lines.close.map(p => new Path2D(p)), grid: [] };
 function Glyph(p: { name: Symbol; darkInk: boolean }) {
   return <Canvas style={{ width: 16, height: 16, pointerEvents: "none" }} draw={(cx, {width}) => {
     cx.scale(width / 24, width / 24); cx.strokeStyle = p.darkInk ? "#393733" : "#ffffff"; cx.fillStyle = cx.strokeStyle; cx.lineWidth = 1.8; cx.lineCap = "round"; cx.lineJoin = "round";
