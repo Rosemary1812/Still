@@ -2,10 +2,10 @@ import { signal, Text, View } from "nsh";
 import { Dialog } from "nsh/base";
 import { Photos } from "contactsheet/native";
 import { Action, Field, ink, muted, paper, row } from "./Controls";
-import { Artwork, Switcher } from "./Gallery";
+import { Switcher } from "./Gallery";
 import type { Library, Panel, Photo } from "./DesktopState";
 
-const titles: Record<Panel,string> = { none: "", inspect: "相册详情", settings: "设置", create: "新建相册" };
+const titles: Record<Panel,string> = { none: "", settings: "设置", create: "新建相册" };
 function AlbumName(p: { app: Library }) {
   const draft = signal("");
   // A new album opens on its own empty page, which offers every way to fill it.
@@ -19,12 +19,9 @@ export function Annotation(p: { photo?: Photo; save: (title: string, description
 }
 export function Panels(p: { app: Library }) {
   const close = () => { if (!p.app.busy()) { p.app.panel.set("none"); p.app.error.set(""); } };
-  const currentCover = () => { const album = p.app.album(); return album ? p.app.cover(album) : undefined; };
-  const albumName = () => p.app.album()?.name ?? "";
   return <If when={p.app.panel() !== "none"}><Dialog testID="album-panel" accessibilityLabel={titles[p.app.panel()]} animation="none" onOpenChange={event => { if (!event.open) close(); }} closeOnEscape={!p.app.busy()} closeOnBackdropPress={!p.app.busy()}
     backdropStyle={{ backgroundColor: "rgba(27,26,24,0.22)" }} style={{ width: 380, maxWidth: "92%", padding: 23, gap: 18, borderRadius: 17, backgroundColor: paper, boxShadow: "0 12px 38px rgba(0,0,0,0.22)" }}>
     <View style={{ ...row, justifyContent: "space-between" }}><Text style={{ fontSize: 22, color: ink, fontFamily: "Georgia" }}>{titles[p.app.panel()]}</Text><Action label="完成" id="close-panel" disabled={p.app.busy()} onPress={close} /></View>
-    <If when={p.app.panel() === "inspect"}><View style={{ alignItems: "center", gap: 11 }}><View style={{ width: 170, height: 170, boxShadow: "2px 6px 12px rgba(0,0,0,.18)" }}><Artwork photo={currentCover()} /></View><Text style={{ fontSize: 22, color: ink }}>{albumName()}</Text><Text style={{ fontSize: 13, color: muted }}>{`${p.app.photos().length} 张照片`}</Text><Action label="打开相册" primary onPress={() => p.app.openAlbum(p.app.albumID())} /></View></If>
     <If when={p.app.panel() === "settings"}><View style={{ alignItems: "flex-start", gap: 12 }}><Text style={{ color: ink }}>相册主页视图</Text><Switcher app={p.app} prefix="settings" /><Text style={{ color: muted, fontSize: 12 }}>{p.app.library().viewMode === "wall" ? "当前：相册墙" : "当前：唱片柜"}</Text></View></If>
     <If when={p.app.panel() === "create"}><AlbumName app={p.app} /></If>
     <If when={p.app.error()}><Text style={{ color: "#903733", fontSize: 13 }}>{p.app.error()}</Text></If>
