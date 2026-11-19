@@ -1,0 +1,24 @@
+{
+  "name": "Still",
+  "id": "local.contact-sheet.app",
+  "version": "0.4.0",
+  "rust": "native",
+  "window": {
+    "title": "Still",
+    "defaultSize": {
+      "width": 1000,
+      "height": 837
+    },
+    "closeOnPress": false
+  },
+  "macos": {
+    "infoPlist": {
+      "NSPhotoLibraryUsageDescription": "选择要加入 Still 相册的照片。"
+    }
+  },
+  "ios": {
+    "infoPlist": {
+      "MinimumOSVersion": "17.0"
+    }
+  }
+}

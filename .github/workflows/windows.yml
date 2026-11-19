@@ -1,0 +1,58 @@
+name: Windows client
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-package:
+    runs-on: windows-2022
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: app
+    env:
+      LIBCLANG_PATH: 'C:\Program Files\LLVM\bin'
+      RUST_MIN_STACK: '268435456'
+      CARGO_INCREMENTAL: '0'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update stable Rust
+        run: rustup update stable --no-self-update
+      - name: Install NSH 0.5.0 for x64
+        run: |
+          $asset = 'nsh-windows-x86_64.zip'
+          $url = "https://github.com/longbridge/nsh/releases/download/v0.5.0/$asset"
+          $zip = Join-Path $env:RUNNER_TEMP $asset
+          Invoke-WebRequest $url -OutFile $zip
+          Invoke-WebRequest "$url.sha256" -OutFile "$zip.sha256"
+          $expected = ((Get-Content "$zip.sha256" -Raw).Trim() -split '\s+')[0]
+          if ($expected -ne (Get-FileHash $zip -Algorithm SHA256).Hash) { throw 'NSH archive checksum mismatch' }
+          Expand-Archive $zip -DestinationPath $env:RUNNER_TEMP
+          Join-Path $env:RUNNER_TEMP 'nsh\bin' | Out-File -Append $env:GITHUB_PATH
+      - name: Test native library
+        run: cargo test --locked --manifest-path native/Cargo.toml
+      - name: Check NSH interface
+        run: nsh check App.tsx
+      - name: Test import and playback with picker fixtures
+        run: |
+          $env:STILL_LIBRARY_DIR = Join-Path $env:RUNNER_TEMP 'still-headless-test'
+          nsh test App.test.tsx
+      - name: Test the client in Win32 windows
+        run: |
+          $env:STILL_LIBRARY_DIR = Join-Path $env:RUNNER_TEMP 'still-ui-test'
+          nsh test Windows.test.tsx --target windows
+      - name: Package Windows client
+        run: nsh package App.tsx --target windows
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Still-Windows-x64
+          path: app/.nsh/out/*.zip
+          include-hidden-files: true
+          if-no-files-found: error

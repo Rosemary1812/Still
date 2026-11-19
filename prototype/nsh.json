@@ -1,7 +1,0 @@
-{
-  "name": "Contact Sheet NSH Prototype",
-  "id": "local.contact-sheet.nsh-prototype",
-  "rust": "native",
-  "window": { "title": "Contact Sheet · NSH prototype", "defaultSize": { "width": 920, "height": 680 }, "closeOnPress": false },
-  "macos": { "infoPlist": { "NSPhotoLibraryUsageDescription": "Choose a photograph to verify the Contact Sheet photo library bridge." } }
-}

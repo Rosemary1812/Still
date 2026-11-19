@@ -1,64 +1,34 @@
 # Still
 
-![Still](docs/branding/still-logo.png)
+Still 是一款本地相册应用。macOS、Windows 和 iPhone 客户端使用 NSH 0.5.0。界面用 TSX 编写，相册、照片副本、旁注和播放状态由 Rust 管理。相册保存在当前设备。
 
-一款本地相册应用。Mac 版支持照片墙、旁注和双页阅读；iPhone 版支持叠放封面、照片浏览和旁注。
+## 开发
 
-## iPhone 客户端
-
-iOS 17+，原生 SwiftUI。封面参考 [Shopify Editions](https://www.shopify.com/editions) 窄屏下的纵向封套布局：上下滑动或点按箭头切换相册，点击封面或底部「打开」进入相册。
-
-- 从系统照片选择器创建相册或追加照片，导入受管理的本地副本。
-- 重命名相册、设置封面、移除照片、删除相册。
-- 网格浏览、左右翻照片、编辑标题与旁注，退出后保留。
-- 支持深色模式、减少动态效果；横屏与辅助功能大字体改为可滚动列表。
-
-打开 `Still-iOS.xcodeproj`，选择 `StillIOS` scheme 和 iPhone 模拟器运行。命令行构建：
+安装 NSH 0.5.0 和 Rust stable。Apple 平台需要完整的 Xcode；给 iPhone 模拟器或真机打包时，先用 rustup 安装对应的 Rust target（Apple Silicon 模拟器为 aarch64-apple-ios-sim，真机为 aarch64-apple-ios）。工作区已有 .tools 工具链时，启动脚本会自动选用它。
 
 ```sh
-bash scripts/build-ios.sh
+scripts/still run macos
+scripts/still run ios
+scripts/still check
+scripts/still test macos
+scripts/still package macos
+scripts/still package ios-simulator
 ```
 
-真机运行需在 Xcode 的 Signing & Capabilities 中选择自己的开发团队。当前未发布 TestFlight / App Store。照片和相册保存在本机，尚未实现与 Mac 的同步。
+macOS 包生成在 `build/macos/Still.app`，模拟器包在 `build/ios-simulator/Still.app`。iPhone 真机包使用 `scripts/still package ios`，安装需要签名与 provisioning profile。Windows 请在装有 Visual Studio C++ 工具、Windows SDK、LLVM 和 Rust 的 Developer PowerShell 中执行 `app/scripts/run-windows.ps1 -Action run`；也支持 check、test 和 package。
 
-调试启动参数 `-still-demo` 加载独立示例库，不接触正常相册。示例图片来自仓库已有样片，来源见 `previews/photo-albums/photo-sources.json`。Release 构建不启用示例库入口。验收说明见 `docs/ios-validation/README.md`。
+## 图库升级
 
-## 原生客户端
-
-当前主实现位于 `Sources/ContactSheet`，使用 SwiftUI 和 SwiftData，需要 macOS 14+ 和 Xcode。
-
-- 从本地文件或 Apple Photos 导入照片，保存受管理的照片副本。
-- 多本相册、封面目录、四行流动照片墙。
-- 照片标题和多段旁注编辑、双页阅读。
-- 相册关系与描述保存在本机；开发版和正式版使用独立资料库。
+旧 Mac 客户端用户首次启动 NSH 版前运行：
 
 ```sh
-# 单元测试
-scripts/test.sh
-
-# Debug 构建
-scripts/build.sh
-
-# 独立资料库的相册开发版
-scripts/build-albums-dev.sh
-
-# Release 构建
-DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
-  xcodebuild -project ContactSheet.xcodeproj -target ContactSheet \
-  -configuration Release SYMROOT="$PWD/build" build
+python3 scripts/migrate-swiftdata.py --destination "$HOME/Library/Application Support/StillNSH"
 ```
 
-Release 产物为 `build/Release/Still.app`。这些是本地构建，尚未作为公证安装包发布。构建产物与用户相册数据库不纳入版本管理。
+迁移会复制相册、封面、顺序、照片和旁注，检查图片哈希后再启用新库。其他旧库路径和 Apple Photos 资源见[旧图库导入说明](docs/swiftdata-import.md)。iPhone 版沿用 local.still.ios 标识，升级后在已有应用沙盒中首次打开时导入旧图库。开发和测试可通过 `STILL_LIBRARY_DIR` 选择独立目录。
 
-## 目录
+## 代码
 
-- `Sources/`、`Tests/`：原生应用与测试。
-- `Sources/StillIOS/`：iPhone 界面；与 Mac 共用 `Models.swift`、`PhotoRepository.swift`。
-- `scripts/`：项目生成、构建和测试脚本。
-- `docs/album-flow-validation/`：验收记录与截图，包含截图工具的已知限制。
-- `previews/photo-albums/`：早期 HTML 相册原型、样片及其来源记录。
-- `prototype/`：独立 NSH / Rust 跨平台技术原型，尚非当前正式客户端。
-
-当前范围不包含桌面小组件。Apple Photos 导入及 Windows 原型仍需进一步实机验收；本地文件导入、旁注保存和重启恢复已验证。摄影样片的来源见 `previews/photo-albums/photo-sources.json`。
-
-应用显示名称为 Still；为兼容已保存的相册，bundle ID 和内部工程目标仍沿用原标识。图标源文件与打包说明见 `docs/branding/README.md`。
+- `app/App.tsx` 选择桌面或 iPhone 界面。桌面主页有唱片柜与相册墙、相册导入、照片阅读和独立放映窗口。
+- `app/native/` 包含 SQLite 数据模型、媒体导入、播放器与 macOS 系统照片选择器桥接。
+- `scripts/still` 是 Mac 与 iPhone 的开发入口。Windows 验证流程位于 `.github/workflows/windows.yml`。
