@@ -24,9 +24,10 @@ function Notes(p: { app: Library; fail: (message: string) => void; cover: (photo
   function commit() {
     clearTimeout(pending);
     if (!dirty || !owner) return;
-    dirty = false;
     try {
       Photos.saveAnnotation(owner, title().trim(), description().trim(), date().trim(), location().trim());
+      // A save that failed stays unsaved, so leaving the field or the next keystroke tries again.
+      dirty = false;
       p.app.refresh();
       saved.set(true);
       clearTimeout(badge);
@@ -46,7 +47,7 @@ function Notes(p: { app: Library; fail: (message: string) => void; cover: (photo
     untracked(() => {
       // The same photo can be annotated from the display window; follow it unless the user is typing here.
       if (id === owner && (dirty || focused())) return;
-      if (id !== owner) { commit(); saved.set(false); }
+      if (id !== owner) { commit(); dirty = false; saved.set(false); }
       owner = id;
       title.set(photo?.title ?? ""); description.set(photo?.description ?? ""); date.set(photo?.date ?? ""); location.set(photo?.location ?? "");
     });
