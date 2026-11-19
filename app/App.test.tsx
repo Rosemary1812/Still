@@ -7,6 +7,13 @@ const png = (variant: number) => new Uint8Array(variant ? [137, 80, 78, 71, 13, 
 test("create an album, switch both gallery controls, read, annotate and present", async () => {
   const app = await open("./App.tsx", { platform: "macos", width: 920, height: 680 });
   app.onPick(() => [{ name: "first.png", data: png(0) }, { name: "second.png", data: png(1) }]);
+  // An album leaves its place for the detail view and goes back, in either gallery.
+  async function pullOut() {
+    await app.press("旅行相册，2 张照片，查看相册详情");
+    await app.waitFor("id:detail-open");
+    await app.press("id:detail-close");
+    await app.waitUntil(() => !app.shows("id:album-detail"));
+  }
   await app.press("id:home-add");
   await app.type("id:album-name", "旅行相册");
   await app.press("id:save-album");
@@ -34,6 +41,7 @@ test("create an album, switch both gallery controls, read, annotate and present"
   await app.press("‹ 全部相册");
   await app.press("id:home-wall");
   await app.waitFor("id:gallery-wall");
+  await pullOut();
   await app.press("id:home-settings");
   await app.waitFor("当前：相册墙");
   await app.press("id:settings-cabinet");
@@ -41,4 +49,8 @@ test("create an album, switch both gallery controls, read, annotate and present"
   await app.press("id:close-panel");
   await app.waitFor("id:gallery-cabinet");
   expect(app.shows("id:gallery-wall")).toBe(false);
+  await pullOut();
+  await app.press("旅行相册，2 张照片，查看相册详情");
+  await app.press("id:detail-open");
+  await app.waitFor("id:photo-wall");
 });
