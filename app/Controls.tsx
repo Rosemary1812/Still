@@ -14,29 +14,42 @@ export const centered: ViewStyle = { flex: 1, alignItems: "center", justifyConte
 const lines = {
   plus: ["M12 5v14", "M5 12h14"],
   settings: ["M9.3 3.5l.7-2h4l.7 2 2.2 1.3 2.2-.4 2 3.5-1.4 1.7v2.7l1.4 1.7-2 3.5-2.2-.4-2.2 1.3-.7 2h-4l-.7-2-2.2-1.3-2.2.4-2-3.5 1.4-1.7V9.6L2.9 7.9l2-3.5 2.2.4z", "M15.4 11a3.4 3.4 0 1 1-6.8 0 3.4 3.4 0 0 1 6.8 0z"],
-  cabinet: ["M4 4h4v16H4z", "M10 4h4v16h-4z", "M16 5l3-.6L22 20l-3 .6z"],
+  cabinet: ["M5 8h14", "M7 5h10", "M9 2.5h6"],
   grid: [],
 } as const;
 type Symbol = keyof typeof lines;
 const paths = { plus: lines.plus.map(p => new Path2D(p)), settings: lines.settings.map(p => new Path2D(p)), cabinet: lines.cabinet.map(p => new Path2D(p)), grid: [] };
-function Glyph(p: { name: Symbol }) {
-  return <Canvas style={{ width: 19, height: 19, pointerEvents: "none" }} draw={(cx, {width}) => {
-    cx.scale(width / 24, width / 24); cx.strokeStyle = "#ffffff"; cx.fillStyle = "#ffffff"; cx.lineWidth = 1.8; cx.lineCap = "round"; cx.lineJoin = "round";
+function Glyph(p: { name: Symbol; darkInk: boolean }) {
+  return <Canvas style={{ width: 16, height: 16, pointerEvents: "none" }} draw={(cx, {width}) => {
+    cx.scale(width / 24, width / 24); cx.strokeStyle = p.darkInk ? "#393733" : "#ffffff"; cx.fillStyle = cx.strokeStyle; cx.lineWidth = 1.8; cx.lineCap = "round"; cx.lineJoin = "round";
     if (p.name === "grid") { for (let y = 0; y < 3; y++) for (let x = 0; x < 3; x++) cx.fillRect(2 + x * 7, 2 + y * 7, 5.3, 5.3); }
     else { for (const path of paths[p.name]) cx.stroke(path); }
+    if (p.name === "cabinet") { cx.beginPath(); cx.roundRect(2, 10, 20, 12, 3); cx.fill(); }
   }} />;
 }
 export function Hint(p: { label: string }) {
   return <Tooltip placement="bottom" style={{ backgroundColor: "#343331", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 }}><Text style={{ color: "#fff", fontSize: 12 }}>{p.label}</Text></Tooltip>;
 }
-// Keep the symbols legible when the system material reflects a white shelf.
-export function GlassTint() {
-  return <View style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0, borderRadius: 24, backgroundColor: "rgba(37,37,39,0.58)", pointerEvents: "none" }} />;
-}
-export function GlassButton(p: { id: string; label: string; icon: Symbol; onPress: () => void; segment?: boolean; selected?: boolean }) {
+// Let the native lens sample the artwork directly. A painted fill here flattens the lens.
+export const toolbarGlass: ViewStyle = {
+  glassEffect: "clear", backdropFilter: "blur(6px)",
+  glassTintColor: "rgba(40, 35, 34, 0.16)", borderRadius: 20,
+  borderWidth: 0.5, borderColor: "rgba(255,255,255,0.52)",
+  boxShadow: "0 1px 3px rgba(0,0,0,0.16)",
+};
+export function GlassButton(p: { id: string; label: string; icon: Symbol; onPress: () => void; segment?: boolean; selected?: boolean; darkInk?: boolean }) {
   return <Button testID={p.id} accessibilityLabel={p.label} selected={p.selected} onPress={p.onPress} tooltip={<Hint label={p.label} />}
-    style={{ ...(p.segment ? {} : glass), width: p.segment ? 41 : 40, height: p.segment ? 31 : 40, borderRadius: 21, alignItems: "center", justifyContent: "center", ...(p.segment ? { backgroundColor: p.selected ? "rgba(255,255,255,0.27)" : "transparent" } : {}) }}
-    hoverStyle={{ backgroundColor: "rgba(110,109,105,0.65)" }} activeStyle={{ opacity: 0.75 }} focusVisibleStyle={{ borderColor: "#87b5f4", borderWidth: 2 }}><If when={!p.segment}><GlassTint /></If><Glyph name={p.icon} /></Button>;
+    style={{
+      ...(p.segment ? {} : toolbarGlass),
+      width: 34, height: p.segment ? 30 : 34, borderRadius: 17,
+      alignItems: "center", justifyContent: "center",
+      backgroundColor: p.segment && p.selected ? "rgba(255,255,255,0.23)" : "transparent",
+    }}
+    hoverStyle={{ backgroundColor: "rgba(180,176,172,0.16)" }}
+    activeStyle={{ opacity: 0.75 }}
+    focusVisibleStyle={{ borderColor: "#87b5f4", borderWidth: 2 }}>
+    <Glyph name={p.icon} darkInk={p.darkInk ?? false} />
+  </Button>;
 }
 export function Action(p: { label: string; onPress: () => void; id?: string; disabled?: boolean; primary?: boolean; danger?: boolean }) {
   return <Button testID={p.id} accessibilityLabel={p.label} disabled={p.disabled} onPress={p.onPress} style={{ paddingVertical: 7, paddingHorizontal: 12, backgroundColor: p.primary ? "#363430" : "#eceae5", borderRadius: 9, alignItems: "center", justifyContent: "center" }} hoverStyle={{ opacity: 0.82 }} disabledStyle={{ opacity: 0.4 }} focusVisibleStyle={{ borderWidth: 1, borderColor: "#698fc0" }}><Text style={{ color: p.primary ? "#fff" : p.danger ? "#963a39" : ink, fontSize: 13 }}>{p.label}</Text></Button>;

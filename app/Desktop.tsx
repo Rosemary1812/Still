@@ -1,4 +1,4 @@
-import { cleanup, computed, effect, Image, keymap, signal, Text, View } from "nsh";
+import { cleanup, computed, effect, Image, keymap, platform, signal, Text, View } from "nsh";
 import { Dialog } from "nsh/base";
 import { currentWindow, Tray, Window } from "nsh/desktop";
 import { Photos } from "contactsheet/native";
@@ -51,6 +51,9 @@ function Display(p: { app: Library }) {
 export function DesktopApp() {
   const main = currentWindow();
   const app = makeLibrary();
+  if (platform.os === "macos") {
+    effect(() => main.set({ titleBar: { style: app.reading() === "home" ? "hidden" : "default", height: 46 } }));
+  }
   function display(albumID?: string) {
     app.command(() => { if (albumID) { Photos.playAlbum(albumID); app.player.set(Photos.snapshot()); } const Player = () => <Display app={app} />;
       Window.open(Player, { id: "display", title: "Still · 放映", defaultSize: { width: 660, height: 510 } }).focus(); });

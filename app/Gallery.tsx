@@ -1,7 +1,7 @@
-import { computed, Image, Scroll, signal, Text, View, type ViewStyle } from "nsh";
+import { computed, Image, platform, Scroll, signal, Text, View, type ViewStyle } from "nsh";
 import { Menu } from "nsh/desktop";
 import { Button } from "nsh/base";
-import { Action, centered, GlassButton, GlassTint, Hint, glass, ink, muted, row } from "./Controls";
+import { Action, centered, GlassButton, Hint, toolbarGlass, ink, muted, row } from "./Controls";
 import type { Album, Library, Photo } from "./DesktopState";
 
 export function Artwork(p: { photo?: Photo; fit?: "contain" | "cover"; light?: boolean }) {
@@ -10,10 +10,10 @@ export function Artwork(p: { photo?: Photo; fit?: "contain" | "cover"; light?: b
     <If when={p.photo?.url && p.photo.url !== failed()} else={<Text style={{ color: p.light ? muted : "#c6c2bb", fontSize: 12 }}>{p.photo ? "照片不可用" : "Still"}</Text>}><Image src={p.photo?.url ?? ""} style={{ width: "100%", height: "100%", objectFit: p.fit ?? "cover" }} onError={() => failed.set(p.photo?.url ?? "")} /></If>
   </View>;
 }
-export function Switcher(p: { app: Library; prefix: string }) {
-  return <View style={{ ...row, ...glass, padding: 3, gap: 1 }}><GlassTint />
-    <GlassButton label="相册墙" icon="grid" id={`${p.prefix}-wall`} segment selected={p.app.library().viewMode === "wall"} onPress={() => p.app.changeView("wall")} />
-    <GlassButton label="唱片柜" icon="cabinet" id={`${p.prefix}-cabinet`} segment selected={p.app.library().viewMode === "cabinet"} onPress={() => p.app.changeView("cabinet")} />
+export function Switcher(p: { app: Library; prefix: string; darkInk?: boolean }) {
+  return <View style={{ ...row, ...toolbarGlass, padding: 2, gap: 1 }}>
+    <GlassButton label="相册墙" icon="grid" id={`${p.prefix}-wall`} segment darkInk={p.darkInk ?? true} selected={p.app.library().viewMode === "wall"} onPress={() => p.app.changeView("wall")} />
+    <GlassButton label="唱片柜" icon="cabinet" id={`${p.prefix}-cabinet`} segment darkInk={p.darkInk ?? true} selected={p.app.library().viewMode === "cabinet"} onPress={() => p.app.changeView("cabinet")} />
   </View>;
 }
 const metal: ViewStyle = { height: 11, backgroundColor: "#686764", backgroundImage: "linear-gradient(180deg, #d7dad8 0%, #8b8c87 30%, #383936 54%, #a6a59f 80%, #454542 100%)", borderRadius: 2, borderColor: "#292a27", borderWidth: 1 };
@@ -42,7 +42,7 @@ function Cabinet(p: { app: Library; width: number }) {
   </Scroll>;
 }
 function Wall(p: { app: Library; width: number }) {
-  const side = () => p.width / Math.max(2, Math.floor(p.width / 158));
+  const side = () => Math.floor(p.width / Math.min(p.app.library().albums.length || 1, Math.max(2, Math.round(p.width / 190))));
   return <Scroll testID="gallery-wall" style={{ flex: 1 }} contentStyle={{ flexDirection: "row", flexWrap: "wrap", alignContent: "flex-start" }}>
     <Each of={p.app.library().albums}>{a => <View onContextMenu={e => albumMenu(p.app,a(),e.pagePosition)}><Button testID={`album-${a().id}`} accessibilityLabel={`${a().name}，${a().photoIds.length} 张照片`} onPress={() => p.app.inspect(a().id)} style={{ width: side(), height: side(), overflow: "hidden" }}>
       <Artwork photo={p.app.cover(a())} /><View style={{ position: "absolute", bottom: 0, left: 0, right: 0, paddingHorizontal: 10, paddingBottom: 9, paddingTop: 26, backgroundImage: "linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.65) 100%)" }}><Text style={{ color: "#fff", fontSize: 13, numberOfLines: 1 }}>{a().name}</Text></View>
@@ -51,14 +51,17 @@ function Wall(p: { app: Library; width: number }) {
 }
 export function Gallery(p: { app: Library }) {
   const width = signal(920);
+  const overArtwork = () => p.app.library().viewMode === "wall" && p.app.library().albums.length > 0;
   return <View style={{ flex: 1, backgroundColor: "#f8f8f7" }} onLayout={e => width.set(Math.max(200,e.bounds.size.width))}>
     <If when={p.app.library().albums.length > 0} else={<View style={centered}><Text style={{ color: ink, fontSize: 24, fontFamily: "Georgia" }}>创建第一本相册</Text><Text style={{ color: muted, fontSize: 14 }}>把照片和旁边的故事收在一起。</Text><Action label="新建相册" onPress={() => p.app.panel.set("create")} /></View>}>
       <If when={p.app.library().viewMode === "wall"} else={<Cabinet app={p.app} width={width()} />}><Wall app={p.app} width={width()} /></If>
     </If>
-    <View style={{ ...row, position: "absolute", top: 15, left: 24, right: 24, justifyContent: "space-between", pointerEvents: "box-none" }}>
-      <View style={{ flex: 1, alignItems: "flex-start", pointerEvents: "none" }}><Text style={{ fontSize: 24, fontWeight: "700", fontFamily: "Georgia", color: p.app.library().viewMode === "wall" && p.app.library().albums.length ? "#fff" : ink }}>Still</Text></View>
-      <Switcher app={p.app} prefix="home" />
-      <View style={{ ...row, flex: 1, justifyContent: "flex-end", pointerEvents: "box-none" }}><GlassButton icon="settings" id="home-settings" label="设置" onPress={() => p.app.panel.set("settings")} /><GlassButton icon="plus" id="home-add" label="添加相册" onPress={() => p.app.panel.set("create")} /></View>
+    <View style={{ ...row, position: "absolute", top: 6, left: 10, right: 10, justifyContent: "space-between", pointerEvents: "box-none" }}>
+      <View desktop={{ windowDrag: true }} style={{ flex: 1, height: 34, justifyContent: "center" }}>
+        <If when={!overArtwork()}><Text style={{ marginLeft: platform.os === "macos" ? 70 : 8, fontSize: 19, fontWeight: "700", fontFamily: "Georgia", color: ink }}>Still</Text></If>
+      </View>
+      <Switcher app={p.app} prefix="home" darkInk={!overArtwork()} />
+      <View style={{ ...row, flex: 1, justifyContent: "flex-end", pointerEvents: "box-none" }}><GlassButton darkInk={!overArtwork()} icon="settings" id="home-settings" label="设置" onPress={() => p.app.panel.set("settings")} /><GlassButton darkInk={!overArtwork()} icon="plus" id="home-add" label="添加相册" onPress={() => p.app.panel.set("create")} /></View>
     </View>
   </View>;
 }
