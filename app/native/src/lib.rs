@@ -92,8 +92,10 @@ async fn import_picked(id: String, picked: Vec<PickedFile>) -> Result<Imported, 
     .map_err(|e| e.to_string())?
 }
 
-const IMAGE_EXTENSIONS: [&str; 12] = [
+// What a dropped folder is searched for: the formats Still shows, and those macOS converts for it.
+const IMAGE_EXTENSIONS: [&str; 22] = [
     "jpg", "jpeg", "jpe", "png", "gif", "webp", "heic", "heif", "avif", "tif", "tiff", "bmp",
+    "dng", "cr2", "cr3", "nef", "arw", "raf", "orf", "rw2", "pef", "srw",
 ];
 
 fn dropped_path(uri: &str) -> PathBuf {
@@ -348,7 +350,14 @@ mod tests {
         assert_eq!(local_path("/C:/a", false), "/C:/a");
         let root = tempfile::tempdir().unwrap();
         std::fs::create_dir(root.path().join("trip")).unwrap();
-        for name in ["b.PNG", "a.jpg", "notes.txt", ".hidden.jpg", "trip/c.heic"] {
+        for name in [
+            "b.PNG",
+            "a.jpg",
+            "notes.txt",
+            ".hidden.jpg",
+            "trip/c.heic",
+            "trip/d.dng",
+        ] {
             std::fs::write(root.path().join(name), b"").unwrap();
         }
         let mut found = Vec::new();
@@ -360,7 +369,7 @@ mod tests {
                 inside.to_string_lossy().replace('\\', "/")
             })
             .collect();
-        assert_eq!(names, ["a.jpg", "b.PNG", "trip/c.heic"]);
+        assert_eq!(names, ["a.jpg", "b.PNG", "trip/c.heic", "trip/d.dng"]);
         // A file dropped by itself is offered as it is; the importer decides whether it is an image.
         let mut single = Vec::new();
         dropped_files(root.path().join("notes.txt"), 4, &mut single);
