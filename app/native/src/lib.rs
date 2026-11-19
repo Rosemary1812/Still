@@ -121,7 +121,19 @@ fn dropped_path(uri: &str) -> PathBuf {
             }
         }
     }
-    PathBuf::from(String::from_utf8_lossy(&out).into_owned())
+    PathBuf::from(local_path(&String::from_utf8_lossy(&out), cfg!(windows)))
+}
+
+/// A `file:` URL's path as the system writes it: Windows drops the slash before the drive (`/C:/a` is `C:/a`).
+fn local_path(path: &str, windows: bool) -> &str {
+    let drive = path.as_bytes();
+    let on_drive =
+        drive.len() > 2 && drive[0] == b'/' && drive[1].is_ascii_alphabetic() && drive[2] == b':';
+    if windows && on_drive {
+        &path[1..]
+    } else {
+        path
+    }
 }
 
 /// Dropped files as they are, and the images inside dropped folders, in name order.
@@ -323,10 +335,17 @@ mod tests {
 
     #[test]
     fn dropped_urls_become_paths_and_folders_give_their_images() {
+        #[cfg(not(windows))]
         assert_eq!(
             dropped_path("file:///Users/a%20b/%E6%B9%96.jpg"),
             PathBuf::from("/Users/a b/湖.jpg")
         );
+        assert_eq!(
+            local_path("/C:/Users/a b/湖.jpg", true),
+            "C:/Users/a b/湖.jpg"
+        );
+        assert_eq!(local_path("/Users/a", true), "/Users/a");
+        assert_eq!(local_path("/C:/a", false), "/C:/a");
         let root = tempfile::tempdir().unwrap();
         std::fs::create_dir(root.path().join("trip")).unwrap();
         for name in ["b.PNG", "a.jpg", "notes.txt", ".hidden.jpg", "trip/c.heic"] {
@@ -336,7 +355,10 @@ mod tests {
         dropped_files(root.path().to_path_buf(), 4, &mut found);
         let names: Vec<_> = found
             .iter()
-            .map(|path| path.strip_prefix(root.path()).unwrap().to_str().unwrap())
+            .map(|path| {
+                let inside = path.strip_prefix(root.path()).unwrap();
+                inside.to_string_lossy().replace('\\', "/")
+            })
             .collect();
         assert_eq!(names, ["a.jpg", "b.PNG", "trip/c.heic"]);
         // A file dropped by itself is offered as it is; the importer decides whether it is an image.
