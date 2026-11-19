@@ -30,5 +30,6 @@ python3 scripts/migrate-swiftdata.py --destination "$HOME/Library/Application Su
 ## 代码
 
 - `app/App.tsx` 选择桌面或 iPhone 界面。桌面主页有唱片柜与相册墙、相册导入、照片阅读和独立放映窗口。
+- `app/Reading.tsx` 是桌面端打开相册后的页面：`PhotoWall.tsx` 是流动照片墙，`Reader.tsx` 是翻阅页（照片与旁注并排，旁注就地编辑并自动保存）。相册内的操作不使用应用自绘弹窗：添加照片和相册操作用系统菜单，照片与文件夹可直接拖入窗口，删除和移除用系统确认框，结果提示显示在页面底部。
 - `app/native/` 包含 SQLite 数据模型、媒体导入、播放器与 macOS 系统照片选择器桥接。
 - `scripts/still` 是 Mac 与 iPhone 的开发入口。Windows 验证流程位于 `.github/workflows/windows.yml`。

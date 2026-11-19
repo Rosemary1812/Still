@@ -57,7 +57,7 @@ private final class PhotoSelection: NSObject, PHPickerViewControllerDelegate {
             }
         }
     }
-    private static func exportImage(_ url: URL) throws -> URL {
+    fileprivate static func exportImage(_ url: URL) throws -> URL {
         guard let image = CGImageSourceCreateWithURL(url as CFURL, nil), let type = CGImageSourceGetType(image) else {throw CocoaError(.fileReadCorruptFile)}
         let out = FileManager.default.temporaryDirectory.appendingPathComponent("still-import-" + UUID().uuidString)
         if [UTType.jpeg.identifier, UTType.png.identifier, UTType.gif.identifier, UTType.webP.identifier].contains(type as String) {
@@ -81,4 +81,12 @@ public func choosePhoto(_ context: UnsafeMutableRawPointer?, _ reply: @escaping 
             } catch {error.localizedDescription.withCString {reply(nil,$0,context)}}
         }
     }
+}
+
+// Dropped files arrive as they are on disk; formats only Apple's decoders read become JPEG at `destination`.
+@_cdecl("contactsheet_export_image")
+public func exportImage(_ source: UnsafePointer<CChar>, _ destination: UnsafePointer<CChar>) -> Bool {
+    guard let exported = try? PhotoSelection.exportImage(URL(fileURLWithPath: String(cString: source))) else { return false }
+    do { try FileManager.default.moveItem(at: exported, to: URL(fileURLWithPath: String(cString: destination))); return true }
+    catch { try? FileManager.default.removeItem(at: exported); return false }
 }

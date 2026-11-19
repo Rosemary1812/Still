@@ -52,7 +52,7 @@ export function DesktopApp() {
   const main = currentWindow();
   const app = makeLibrary();
   if (platform.os === "macos") {
-    effect(() => main.set({ titleBar: { style: app.reading() === "home" ? "hidden" : "default", height: 46 } }));
+    main.set({ titleBar: { style: "hidden", height: 46 } });
   }
   function display(albumID?: string) {
     app.command(() => { if (albumID) { Photos.playAlbum(albumID); app.player.set(Photos.snapshot()); } const Player = () => <Display app={app} />;

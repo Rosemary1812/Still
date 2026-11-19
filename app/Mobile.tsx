@@ -133,7 +133,7 @@ export function MobileApp() {
       <Scroll class="flex-1"><View class="gap-4">
         <Text class="text-2xl font-bold dark:text-white">{album()?.name ?? ""}</Text>
         <View class="flex-row flex-wrap gap-2">
-          <Action label="添加照片" disabled={busy()} run={() => void perform(() => Photos.addFiles(albumId()))} />
+          <Action label="添加照片" disabled={busy()} run={() => void perform(async () => { await Photos.addFiles(albumId()); })} />
           <Action label="重命名" run={() => { name.set(album()?.name ?? ""); page.set("rename"); }} />
           <Action label="删除相册" run={() => page.set("delete")} />
         </View>
