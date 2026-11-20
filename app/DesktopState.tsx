@@ -4,7 +4,7 @@ import { Photos } from "contactsheet/native";
 export type Album = ReturnType<typeof Photos.library>["albums"][number];
 export type Photo = ReturnType<typeof Photos.library>["photos"][number];
 export type GalleryMode = "wall" | "cabinet";
-export type Panel = "none" | "settings" | "create";
+export type Panel = "none" | "create";
 
 export function makeLibrary() {
   const library = signal<ReturnType<typeof Photos.library>>({ albums: [], photos: [], viewMode: "cabinet" });
