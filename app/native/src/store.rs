@@ -10,6 +10,7 @@ use uuid::Uuid;
 
 mod media;
 mod movie;
+mod recovery;
 pub use media::MediaInput;
 pub type ImportCounts = crate::Imported;
 
@@ -91,6 +92,7 @@ impl Store {
             1 => {}
             _ => return Err("图库由更新版本的 Still 创建".into()),
         }
+        recovery::recover(&root, &migration)?;
         migration.commit()?;
         #[cfg(target_os = "ios")]
         let db = {

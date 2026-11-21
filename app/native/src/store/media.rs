@@ -1,4 +1,4 @@
-use super::{ImportCounts, Result, Store, movie};
+use super::{ImportCounts, Result, Store, movie, recovery};
 use rusqlite::{OptionalExtension, TransactionBehavior, params};
 use sha2::{Digest, Sha256};
 use std::{
@@ -240,6 +240,7 @@ impl Validated {
 struct Publication<'a> {
     root: &'a Path,
     stage: &'a Path,
+    journal: &'a mut File,
     created: Vec<String>,
 }
 
@@ -253,6 +254,7 @@ impl Publication<'_> {
         let parent = target.parent().ok_or("无效的媒体路径")?;
         fs::create_dir_all(parent)?;
         let staged = self.stage.join(source);
+        recovery::record(self.journal, destination)?;
         if fs::hard_link(&staged, &target).is_err() {
             // Filesystems without hard links still publish an atomic, durable copy.
             let mut copy = NamedTempFile::new_in(parent)?;
@@ -271,15 +273,7 @@ impl Publication<'_> {
         }
         let cleanup = db.transaction_with_behavior(TransactionBehavior::Immediate)?;
         for path in self.created {
-            let used: bool = cleanup.query_row(
-                "SELECT EXISTS(SELECT 1 FROM photos WHERE path=?1)
-                     OR EXISTS(SELECT 1 FROM media_resources WHERE motion=?1 OR original_still=?1)",
-                [&path],
-                |r| r.get(0),
-            )?;
-            if !used {
-                fs::remove_file(self.root.join(path))?;
-            }
+            recovery::remove_unused(&cleanup, self.root, &path)?;
         }
         cleanup.commit()?;
         Ok(())
@@ -309,21 +303,20 @@ impl Store {
         files: Vec<MediaInput>,
     ) -> Result<ImportCounts> {
         let mut counts = ImportCounts::default();
-        let stage = tempfile::Builder::new()
-            .prefix(".import-")
-            .tempdir_in(self.root.join("media"))?;
-        fs::create_dir(stage.path().join("media"))?;
+        let mut stage = recovery::Stage::create(&self.root, &mut self.db)?;
+        let stage_path = stage.path().to_owned();
         let mut prepared = Vec::new();
         for file in files {
             match file.validate() {
-                Ok(asset) => prepared.push(asset.stage(stage.path())?),
+                Ok(asset) => prepared.push(asset.stage(&stage_path)?),
                 Err(e) if name.is_some() => return Err(format!("无法读取选中的媒体：{e}").into()),
                 Err(_) => counts.skipped += 1,
             }
         }
         let mut publication = Publication {
             root: &self.root,
-            stage: stage.path(),
+            stage: &stage_path,
+            journal: &mut stage.journal,
             created: Vec::new(),
         };
         let write = || -> Result<()> {
@@ -590,8 +583,8 @@ mod tests {
         let mut first = Store::open(dir.path().into()).unwrap();
         let still = dir.path().join("input.png");
         fs::write(&still, STILL).unwrap();
-        let stage = tempfile::tempdir_in(dir.path()).unwrap();
-        fs::create_dir(stage.path().join("media")).unwrap();
+        let mut stage = recovery::Stage::create(dir.path(), &mut first.db).unwrap();
+        let stage_path = stage.path().to_owned();
         let asset = MediaInput::Photo(still.clone())
             .validate()
             .unwrap()
@@ -599,7 +592,8 @@ mod tests {
             .unwrap();
         let mut publication = Publication {
             root: dir.path(),
-            stage: stage.path(),
+            stage: &stage_path,
+            journal: &mut stage.journal,
             created: vec![],
         };
         publication.publish(&asset.preview, &asset.preview).unwrap();
