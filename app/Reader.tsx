@@ -17,7 +17,7 @@ const fieldFocus = { backgroundColor: "rgba(255,255,255,0.09)" };
 const thumb = 46, thumbGap = 6;
 
 // Notes are written where they are read. They save themselves, so the page has no edit mode.
-function Notes(p: { app: Library; fail: (message: string) => void; cover: (photo: Photo) => void; remove: (photo: Photo) => void }) {
+function Notes(p: { app: Library; focusedNote: Signal<InputRef | null>; fail: (message: string) => void; cover: (photo: Photo) => void; remove: (photo: Photo) => void }) {
   const title = signal(""), description = signal(""), date = signal(""), location = signal("");
   const saved = signal(false);
   let owner = "";
@@ -44,7 +44,7 @@ function Notes(p: { app: Library; fail: (message: string) => void; cover: (photo
     clearTimeout(pending);
     pending = setTimeout(commit, 700);
   }
-  const focused = signal<InputRef | null>(null);
+  const focused = p.focusedNote;
   effect(() => {
     const id = p.app.photoID(), photo = p.app.photo();
     untracked(() => {
@@ -59,7 +59,7 @@ function Notes(p: { app: Library; fail: (message: string) => void; cover: (photo
     const input = focused();
     if (input) cleanup(keymap.bind({ escape: () => input.blur() }, { when: "always" }));
   });
-  cleanup(() => { commit(); clearTimeout(badge); });
+  cleanup(() => { focused.set(null); commit(); clearTimeout(badge); });
   const bind = (input: () => InputRef | undefined) => ({ onFocus: () => focused.set(input() ?? null), onBlur: () => { focused.set(null); commit(); } });
   let titleInput: InputRef | undefined, dateInput: InputRef | undefined, placeInput: InputRef | undefined, storyInput: InputRef | undefined;
   const isCover = () => { const album = p.app.album(); return !!album && p.app.cover(album)?.id === p.app.photoID(); };
@@ -96,7 +96,7 @@ function Arrow(p: { id: string; label: string; icon: "previous" | "next"; shown:
 }
 
 // The photograph is the page: a print on a stage lit by its own colors, its notes beside it.
-export function Reader(p: { app: Library; width: number; fail: (message: string) => void; cover: (photo: Photo) => void; remove: (photo: Photo) => void; menu: (photo: Photo, at: { x: number; y: number }) => void }) {
+export function Reader(p: { app: Library; focusedNote: Signal<InputRef | null>; width: number; fail: (message: string) => void; cover: (photo: Photo) => void; remove: (photo: Photo) => void; menu: (photo: Photo, at: { x: number; y: number }) => void }) {
   const window = currentWindow();
   const room = signal({ width: 600, height: 400 });
   const shapes = signal(new Map<string, number>());
@@ -130,7 +130,7 @@ export function Reader(p: { app: Library; width: number; fail: (message: string)
         <If when={p.app.index() < p.app.photos().length - 1}><Arrow id="photo-next" label="下一张" icon="next" shown={hovering()} onPress={() => p.app.step(1)} /></If>
       </View>
       <View style={{ width: notesWidth(), paddingRight: 30, paddingLeft: 4, justifyContent: "center" }}>
-        <View style={{ height: Math.min(room().height - 24, Math.max(print().height, 300)) }}><Notes app={p.app} fail={p.fail} cover={p.cover} remove={p.remove} /></View>
+        <View style={{ height: Math.min(room().height - 24, Math.max(print().height, 300)) }}><Notes app={p.app} focusedNote={p.focusedNote} fail={p.fail} cover={p.cover} remove={p.remove} /></View>
       </View>
     </View>
     <Scroll horizontal ref={r => (strip = r)} scrollbar={false} style={{ height: 70, flexGrow: 0 }} contentStyle={{ flexDirection: "row", alignItems: "center", gap: thumbGap, paddingHorizontal: stripInset(), paddingBottom: 6 }}>

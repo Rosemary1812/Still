@@ -1,5 +1,5 @@
 import { importSummary, mediaName, thisItem } from "./MediaLabels";
-import { cleanup, effect, keymap, platform, reduceMotion, signal, Text, View, type ViewStyle } from "nsh";
+import { cleanup, effect, keymap, platform, reduceMotion, signal, Text, View, type InputRef, type ViewStyle } from "nsh";
 import { AlertDialog, Button, Input } from "nsh/base";
 import { currentWindow, Menu } from "nsh/desktop";
 import { Photos } from "contactsheet/native";
@@ -57,6 +57,7 @@ export function Reading(p: { app: Library }) {
   }
 
   const renaming = signal(false);
+  const focusedNote = signal<InputRef | null>(null);
   const draft = signal("");
   function rename() { draft.set(name()); renaming.set(true); }
   function endRename(save: boolean) {
@@ -103,11 +104,13 @@ export function Reading(p: { app: Library }) {
   effect(() => {
     if (p.app.panel() !== "none") return;
     if (renaming()) { cleanup(keymap.bind({ escape: () => endRename(false) }, { when: "always" })); return; }
+    // On macOS an AVPlayerView counts as an editor for native shortcut routing.
+    const videoControls = platform.os === "macos" && !onWall() && p.app.photo()?.kind === "video" && !focusedNote();
     cleanup(keymap.bind({
       escape: () => onWall() ? p.app.home() : p.app.reading.set("wall"),
       left: () => { if (!onWall()) p.app.step(-1); },
       right: () => { if (!onWall()) p.app.step(1); },
-    }, { when: "notEditing" }));
+    }, { when: videoControls ? "always" : "notEditing" }));
   });
 
   const shown = () => awake() || !onWall() || empty() || paused() || renaming() || p.app.busy();
@@ -131,7 +134,7 @@ export function Reading(p: { app: Library }) {
           <If when={platform.os === "macos"}><Quiet id="empty-apple" label="从 Apple 照片选择" disabled={p.app.busy()} onPress={() => { add("apple"); }} /></If>
         </View>
       </View>}>
-      <If when={onWall()} else={<Reader app={p.app} width={width()} fail={fail} cover={setCover} remove={photo => { remove(photo); }} menu={photoMenu} />}>
+      <If when={onWall()} else={<Reader app={p.app} focusedNote={focusedNote} width={width()} fail={fail} cover={setCover} remove={photo => { remove(photo); }} menu={photoMenu} />}>
         <PhotoWall app={p.app} width={width()} height={height()} paused={paused() || renaming() || p.app.panel() !== "none"} menu={photoMenu} />
         <View style={{ ...cover, top: undefined, height: 170, justifyContent: "flex-end", paddingHorizontal: 26, paddingBottom: 22, gap: 4, pointerEvents: "none", backgroundImage: "linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.72) 100%)", opacity: shown() ? 1 : 0, ...fade, transitionDuration: 420 }}>
           <Text style={{ color: onPhoto, fontSize: 30, fontFamily: serif, numberOfLines: 1 }}>{name()}</Text>
