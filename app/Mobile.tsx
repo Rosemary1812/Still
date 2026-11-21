@@ -1,3 +1,4 @@
+import { importSummary } from "./MediaImport";
 import { MediaBadge, MotionMedia } from "./MotionMedia";
 import { Image, Scroll, Text, View, safeAreaInsets, signal, fontScale, screenReaderEnabled, announce } from "nsh";
 import { Button, Input } from "nsh/base";
@@ -19,6 +20,7 @@ export function MobileApp() {
   const page = signal<Page>("shelf");
   const error = signal("");
   const busy = signal(false);
+  const importNotice = signal("");
   const library = signal<ReturnType<typeof Photos.library>>({ albums: [], photos: [], viewMode: "cabinet" });
   const albumId = signal("");
   const photoId = signal("");
@@ -45,6 +47,15 @@ export function MobileApp() {
       library.set(Photos.library());
     } catch (cause) { const message = String(cause); error.set(message); announce(message); }
     finally { busy.set(false); }
+  }
+  async function addMedia(source: "files" | "photos") {
+    importNotice.set("");
+    await perform(async () => {
+      const result = source === "files" ? await Photos.addFiles(albumId()) : await Photos.addApplePhotos(albumId());
+      const message = importSummary(result);
+      importNotice.set(message);
+      if (message) announce(message);
+    });
   }
   function stepAlbum(direction: number) {
     const albums = library().albums;
@@ -74,14 +85,13 @@ export function MobileApp() {
     if (page() === "create") {
       const id = await Photos.createAlbumFromPicker(name().trim());
       if (!id) return;
-      albumId.set(id);
-      page.set("album");
+      openAlbum(id);
     } else {
       Photos.renameAlbum(albumId(), name().trim());
       page.set("album");
     }
   }
-  function openAlbum(id: string) { albumId.set(id); page.set("album"); error.set(""); }
+  function openAlbum(id: string) { importNotice.set(""); albumId.set(id); page.set("album"); error.set(""); }
   try { library.set(Photos.library()); } catch (cause) { error.set(String(cause)); }
   return <View class="flex-1 bg-white dark:bg-neutral-950" onLayout={e => landscape.set(e.bounds.size.width > e.bounds.size.height)} style={{
     paddingTop: safe().top, paddingBottom: safe().bottom, paddingLeft: safe().left + 14, paddingRight: safe().right + 14
@@ -134,11 +144,12 @@ export function MobileApp() {
       <Scroll class="flex-1"><View class="gap-4">
         <Text class="text-2xl font-bold dark:text-white">{album()?.name ?? ""}</Text>
         <View class="flex-row flex-wrap gap-2">
-          <Action label="从照片图库添加" disabled={busy()} run={() => void perform(async () => { await Photos.addApplePhotos(albumId()); })} />
-          <Action label="从文件添加" disabled={busy()} run={() => void perform(async () => { await Photos.addFiles(albumId()); })} />
+          <Action label="从照片图库添加" disabled={busy()} run={() => void addMedia("photos")} />
+          <Action label="从文件添加" disabled={busy()} run={() => void addMedia("files")} />
           <Action label="重命名" run={() => { name.set(album()?.name ?? ""); page.set("rename"); }} />
           <Action label="删除相册" run={() => page.set("delete")} />
         </View>
+        <If when={importNotice()}><Text testID="mobile-import-result" class="text-neutral-600 dark:text-neutral-200">{importNotice()}</Text></If>
         <View class="flex-row flex-wrap gap-1">
           <Each of={ids()} key={id => id}>{id => <Button testID={`mobile-photo-${ids().indexOf(id()) + 1}`} accessibilityLabel={photo(id())?.title || `照片 ${ids().indexOf(id()) + 1}`} style={{width:landscape() ? "19%" : "32%",aspectRatio:1}} onPress={() => {photoId.set(id());page.set("reader");}}>
             <Image src={photo(id())?.url ?? ""} style={{width:"100%",height:"100%",objectFit:"cover"}} />

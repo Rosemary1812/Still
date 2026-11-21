@@ -1,3 +1,4 @@
+import { importSummary } from "./MediaImport";
 import { cleanup, effect, keymap, platform, reduceMotion, signal, Text, View, type ViewStyle } from "nsh";
 import { AlertDialog, Button, Input } from "nsh/base";
 import { currentWindow, Menu } from "nsh/desktop";
@@ -50,11 +51,8 @@ export function Reading(p: { app: Library }) {
     try {
       const done = source === "files" ? await Photos.addFiles(album) : source === "apple" ? await Photos.addApplePhotos(album) : await Photos.addDropped(album, source);
       p.app.refresh();
-      const unread = done.skipped ? `${done.skipped} 个文件无法读取` : "";
-      const held = done.existing && !done.added ? "这些照片已经在相册里了" : "";
-      const added = done.added ? `已添加 ${done.added} 张照片` : "";
-      const text = [added, held, unread].filter(Boolean).join("，");
-      if (text) say(text, !done.added && !held);
+      const text = importSummary(done);
+      if (text) say(text, !!done.skipped && !done.added && !done.existing);
     } catch (e) { fail(e); } finally { p.app.busy.set(false); }
   }
 
@@ -175,7 +173,7 @@ export function Reading(p: { app: Library }) {
     <If when={notice() || p.app.busy()}>
       <View style={{ ...cover, top: undefined, bottom: onWall() || empty() ? 24 : 86, alignItems: "center", pointerEvents: "box-none" }}>
         <View testID="album-notice" role="alert" style={{ ...pill, paddingVertical: 8, paddingHorizontal: 16, maxWidth: "80%" }}>
-          <Text style={{ color: notice()?.problem && !p.app.busy() ? "#ffb1a8" : onPhoto, fontSize: 12.5 }}>{p.app.busy() ? "正在添加照片…" : notice()?.text ?? ""}</Text>
+          <Text style={{ color: notice()?.problem && !p.app.busy() ? "#ffb1a8" : onPhoto, fontSize: 12.5 }}>{p.app.busy() ? "正在添加…" : notice()?.text ?? ""}</Text>
         </View>
       </View>
     </If>

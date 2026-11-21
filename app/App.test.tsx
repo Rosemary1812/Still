@@ -18,7 +18,7 @@ test("create an album, switch the gallery view, read and annotate", async () => 
   await app.dropFiles("id:album-empty", [selection]);
   await app.waitFor("id:photo-wall");
   // One unreadable file is reported and does not cost the rest of the selection.
-  await app.waitFor("已添加 2 张照片，1 个文件无法读取");
+  await app.waitFor("已添加 2 项，1 个文件无法读取");
 
   await app.press("id:album-read");
   await app.waitFor("01 / 2");
@@ -51,7 +51,7 @@ test("create an album, switch the gallery view, read and annotate", async () => 
   await app.dropFiles("id:photo-reader", [folder]);
   await app.waitFor("02 / 4");
   await app.dropFiles("id:photo-reader", [folder]);
-  await app.waitFor("这些照片已经在相册里了");
+  await app.waitFor("2 项已在相册中");
 
   // Removing a photo asks with the system's alert.
   let asked = "";
@@ -77,11 +77,10 @@ test("create an album, switch the gallery view, read and annotate", async () => 
 
 test("the wall's photo menu", async () => {
   const app = await open("./App.tsx", { platform: "macos", width: 920, height: 680 });
-  app.onPick(() => [{ name: "only.png", data: png(0) }]);
   await app.press("id:home-add");
   await app.type("id:album-name", "一页");
   await app.press("id:save-album");
-  const selection = new URL("./native/tests/picker-fixtures", import.meta.url).href.replace(/^asset:/, "file://");
+  const selection = new URL("./native/tests/fixtures/first.png", import.meta.url).href.replace(/^asset:/, "file://");
   await app.dropFiles("id:album-empty", [selection]);
   await app.waitFor("id:photo-wall");
   await app.rightClick("label:查看照片 1 >> nth=0");
