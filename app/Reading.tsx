@@ -127,7 +127,7 @@ export function Reading(p: { app: Library }) {
           <Icon name="plus" size={26} color="rgba(255,255,255,0.6)" />
         </Button>
         <Text style={{ color: onPhoto, fontSize: 24, fontFamily: serif }}>{name()}</Text>
-        <Text style={{ color: onPhotoMuted, fontSize: 13 }}>这本相册还是空的。把照片或文件夹拖进来，或者：</Text>
+        <Text style={{ color: onPhotoMuted, fontSize: 13 }}>这本相册还是空的。把照片、视频或文件夹拖进来，或者：</Text>
         <View style={{ flexDirection: "row", gap: 8, marginTop: 6 }}>
           <Quiet id="empty-files" label="从文件选择" filled disabled={p.app.busy()} onPress={() => { add("files"); }} />
           <If when={platform.os === "macos"}><Quiet id="empty-apple" label="从 Apple 照片选择" disabled={p.app.busy()} onPress={() => { add("apple"); }} /></If>
@@ -168,7 +168,7 @@ export function Reading(p: { app: Library }) {
       <View style={{ ...cover, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(18,17,16,0.62)", pointerEvents: "none" }}>
         <View style={{ paddingVertical: 22, paddingHorizontal: 34, borderRadius: 16, borderWidth: 1.5, borderStyle: "dashed", borderColor: "rgba(255,255,255,0.55)", alignItems: "center", gap: 6 }}>
           <Text style={{ color: onPhoto, fontSize: 17, fontFamily: serif }}>{`松开，添加到「${name()}」`}</Text>
-          <Text style={{ color: onPhotoMuted, fontSize: 12.5 }}>照片和文件夹都可以</Text>
+          <Text style={{ color: onPhotoMuted, fontSize: 12.5 }}>支持照片、视频和文件夹</Text>
         </View>
       </View>
     </If>

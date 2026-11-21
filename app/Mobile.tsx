@@ -1,3 +1,4 @@
+import { MediaBadge, MotionMedia } from "./MotionMedia";
 import { Image, Scroll, Text, View, safeAreaInsets, signal, fontScale, screenReaderEnabled, announce } from "nsh";
 import { Button, Input } from "nsh/base";
 import { Photos } from "contactsheet/native";
@@ -133,13 +134,15 @@ export function MobileApp() {
       <Scroll class="flex-1"><View class="gap-4">
         <Text class="text-2xl font-bold dark:text-white">{album()?.name ?? ""}</Text>
         <View class="flex-row flex-wrap gap-2">
-          <Action label="添加照片" disabled={busy()} run={() => void perform(async () => { await Photos.addFiles(albumId()); })} />
+          <Action label="从照片图库添加" disabled={busy()} run={() => void perform(async () => { await Photos.addApplePhotos(albumId()); })} />
+          <Action label="从文件添加" disabled={busy()} run={() => void perform(async () => { await Photos.addFiles(albumId()); })} />
           <Action label="重命名" run={() => { name.set(album()?.name ?? ""); page.set("rename"); }} />
           <Action label="删除相册" run={() => page.set("delete")} />
         </View>
         <View class="flex-row flex-wrap gap-1">
           <Each of={ids()} key={id => id}>{id => <Button testID={`mobile-photo-${ids().indexOf(id()) + 1}`} accessibilityLabel={photo(id())?.title || `照片 ${ids().indexOf(id()) + 1}`} style={{width:landscape() ? "19%" : "32%",aspectRatio:1}} onPress={() => {photoId.set(id());page.set("reader");}}>
             <Image src={photo(id())?.url ?? ""} style={{width:"100%",height:"100%",objectFit:"cover"}} />
+            <MediaBadge photo={photo(id())} />
           </Button>}</Each>
         </View>
       </View></Scroll>
@@ -148,6 +151,7 @@ export function MobileApp() {
       <View class="flex-1 gap-3" style={{flexDirection:landscape() ? "row" : "column"}}>
         <View class="flex-1" onPanEnd={e => {if (Math.abs(e.translation.x) > 32) stepPhoto(e.translation.x < 0 ? 1 : -1);}}>
           <Image src={current()?.url ?? ""} style={{width:"100%", height:"100%",objectFit:"contain"}} />
+          <MotionMedia photo={current()} />
         </View>
         <Scroll style={{maxHeight:landscape() ? "100%" : "46%", ...(landscape() ? {width:"40%"} : {})}}><View class="gap-2">
         <Text class="text-xl dark:text-white">{current()?.title || `照片 ${ids().indexOf(photoId())+1} / ${ids().length}`}</Text>
@@ -164,6 +168,7 @@ export function MobileApp() {
     <If when={page() === "create" || page() === "rename"}>
       <Scroll class="flex-1"><View class="gap-4"><Text class="text-xl dark:text-white">相册名称</Text>
         <Input testID="mobile-name" accessibilityLabel="相册名称" class="min-h-11 rounded-lg border border-neutral-400 px-3 dark:text-white" value={name()} onChange={e => name.set(e.value)} placeholder="相册名称" />
+        <If when={page() === "create"}><Action label="创建空相册" disabled={busy() || !name().trim()} run={() => void perform(() => openAlbum(Photos.createAlbum(name().trim())))} /></If>
         <Action label={page() === "create" ? "创建并选择照片" : "保存名称"} run={() => void perform(saveName)} disabled={busy() || !name().trim()} />
       </View></Scroll>
     </If>

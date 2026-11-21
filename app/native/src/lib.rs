@@ -293,8 +293,10 @@ impl Photos {
         }
     }
     pub fn play_album(id: String) -> Result<(), String> {
-        let (paths, shuffle) = with_store(|s| Ok((s.playlist(&id)?, s.shuffle()?)))?;
+        let (paths, videos, shuffle) =
+            with_store(|s| Ok((s.playlist(&id)?, s.video_posters(&id)?, s.shuffle()?)))?;
         let mut p = player().lock().unwrap();
+        p.video_posters = videos.into_iter().collect();
         p.set_shuffle(shuffle);
         p.replace(paths);
         p.album = Some(id);
@@ -320,6 +322,9 @@ impl Photos {
     }
     pub fn next() {
         player().lock().unwrap().step(1)
+    }
+    pub fn finish_video(poster: String, failed: bool) {
+        player().lock().unwrap().finish_video(&poster, failed)
     }
     pub fn previous() {
         player().lock().unwrap().step(-1)

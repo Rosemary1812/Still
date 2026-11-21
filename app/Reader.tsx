@@ -1,3 +1,5 @@
+import { currentWindow } from "nsh/desktop";
+import { MotionMedia } from "./MotionMedia";
 import { cleanup, computed, effect, Image, keymap, Scroll, signal, Text, untracked, View, type InputRef, type InputStyle, type ScrollRef, type Signal } from "nsh";
 import { Button, Input } from "nsh/base";
 import { Photos } from "contactsheet/native";
@@ -94,6 +96,7 @@ function Arrow(p: { id: string; label: string; icon: "previous" | "next"; shown:
 
 // The photograph is the page: a print on a stage lit by its own colors, its notes beside it.
 export function Reader(p: { app: Library; width: number; fail: (message: string) => void; cover: (photo: Photo) => void; remove: (photo: Photo) => void; menu: (photo: Photo, at: { x: number; y: number }) => void }) {
+  const window = currentWindow();
   const room = signal({ width: 600, height: 400 });
   const shapes = signal(new Map<string, number>());
   const hovering = signal(false);
@@ -120,6 +123,7 @@ export function Reader(p: { app: Library; width: number; fail: (message: string)
             <Image src={p.app.photo()?.url ?? ""} accessibilityLabel={p.app.photo()?.title || `照片 ${p.app.index() + 1}`} fadeDuration={200} style={{ width: "100%", height: "100%", objectFit: "contain" }}
               onLoad={e => { const id = p.app.photoID(); if (e.size.height > 0 && shapes().get(id) !== e.size.width / e.size.height) shapes.set(new Map(shapes()).set(id, e.size.width / e.size.height)); }} />
           </If>
+          <If when={window.state()?.visible !== false}><MotionMedia photo={p.app.photo()} /></If>
         </View>
         <If when={p.app.index() > 0}><Arrow id="photo-previous" label="上一张" icon="previous" shown={hovering()} onPress={() => p.app.step(-1)} /></If>
         <If when={p.app.index() < p.app.photos().length - 1}><Arrow id="photo-next" label="下一张" icon="next" shown={hovering()} onPress={() => p.app.step(1)} /></If>

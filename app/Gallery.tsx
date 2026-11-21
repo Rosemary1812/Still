@@ -1,3 +1,4 @@
+import { MediaBadge } from "./MotionMedia";
 import { cleanup, computed, createAnimatedValue, effect, Image, keymap, platform, reduceMotion, Scroll, signal, Text, untracked, View, type MouseEvent, type TransformStep, type ViewRef, type ViewStyle } from "nsh";
 import { Menu } from "nsh/desktop";
 import { Button } from "nsh/base";
@@ -14,6 +15,7 @@ export function Artwork(p: { photo?: Photo; fit?: "contain" | "cover"; light?: b
   const failed = signal("");
   return <View style={{ width: "100%", height: "100%", alignItems: "center", justifyContent: "center", overflow: "hidden", backgroundColor: p.light ? "#e6e2da" : "#343332" }}>
     <If when={p.photo?.url && p.photo.url !== failed()} else={<Text style={{ color: p.light ? muted : "#c6c2bb", fontSize: 12 }}>{p.photo ? "照片不可用" : "Still"}</Text>}><Image src={p.photo?.url ?? ""} style={{ width: "100%", height: "100%", objectFit: p.fit ?? "cover" }} onError={() => failed.set(p.photo?.url ?? "")} /></If>
+    <MediaBadge photo={p.photo} />
   </View>;
 }
 export function Switcher(p: { app: Library; prefix: string }) {

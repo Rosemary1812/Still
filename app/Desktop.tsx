@@ -1,3 +1,4 @@
+import { MotionMedia } from "./MotionMedia";
 import { cleanup, computed, effect, Image, keymap, platform, signal, Text, View } from "nsh";
 import { Dialog } from "nsh/base";
 import { currentWindow, Tray, Window } from "nsh/desktop";
@@ -27,7 +28,7 @@ function Display(p: { app: Library }) {
     cleanup(unbind);
   });
   return <View style={{ flex: 1, backgroundColor: "#1b1a19" }}>
-    <View style={centered}><If when={current()} else={<Text style={{ color: "#fff" }}>打开一本相册，开始放映。</Text>}><Image src={current()} style={{ width: "100%", height: "100%", objectFit: "contain" }} /></If></View>
+    <View style={centered}><If when={current()} else={<Text style={{ color: "#fff" }}>打开一本相册，开始放映。</Text>}><Image src={current()} style={{ width: "100%", height: "100%", objectFit: "contain" }} /></If><MotionMedia photo={photo()} slide={{ playing: p.app.player().playing, finish: (poster, failed) => p.app.control(() => Photos.finishVideo(poster, failed)) }} /></View>
     <If when={photo()}><View style={{ paddingHorizontal: 20, paddingTop: 12, gap: 4 }}>
       <If when={photo()?.title}><Text style={{ color: "#fff", fontFamily: "Georgia", fontSize: 21 }}>{photo()?.title}</Text></If>
       <If when={photo()?.description}><Text style={{ color: "#e9e8e5", fontSize: 14, numberOfLines: 3 }}>{photo()?.description}</Text></If>
