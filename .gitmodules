@@ -1,0 +1,3 @@
+[submodule "toolchain/nsh"]
+	path = toolchain/nsh
+	url = https://github.com/longbridge/nsh.git

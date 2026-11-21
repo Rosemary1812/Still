@@ -6,12 +6,6 @@ action="${1:-run}"
 platform="${2:-macos}"
 case "$platform" in macos|ios|ios-simulator|windows) ;; *) echo "Unknown target: $platform" >&2; exit 2 ;; esac
 shift $(( $# > 1 ? 2 : $# ))
-if [[ -x "$root/.tools/nsh/nsh/bin/nsh" ]]; then
-  cli="$root/.tools/nsh/nsh/bin/nsh"
-else
-  cli=nsh
-fi
-if [[ "$("$cli" --version)" != *'0.5.0'* ]]; then echo 'Still needs NSH 0.5.0.' >&2; exit 1; fi
 if [[ -x "$root/.tools/cargo/bin/cargo" ]]; then
   export CARGO_HOME="$root/.tools/cargo" RUSTUP_HOME="$root/.tools/rustup"
   export PATH="$CARGO_HOME/bin:$PATH"
@@ -22,6 +16,9 @@ if [[ "$(uname)" == Darwin ]]; then
   export IPHONEOS_DEPLOYMENT_TARGET=17.0
   export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 fi
+git -C "$root" submodule update --init toolchain/nsh
+(cd "$root/toolchain/nsh" && cargo build --locked -p nsh-cli)
+cli="$root/toolchain/nsh/target/debug/nsh"
 case "$action" in
   run)
     if [[ "$platform" == macos && -z "${STILL_LIBRARY_DIR:-}" && ! -e "$HOME/Library/Application Support/StillNSH" && -f "$HOME/Library/Containers/local.contact-sheet.app/Data/Library/Application Support/default.store" ]]; then
@@ -30,12 +27,18 @@ case "$action" in
     exec "$cli" run App.tsx --target "$platform" "$@" ;;
   check) exec "$cli" check App.tsx "$@" ;;
   test)
-    export STILL_LIBRARY_DIR="$(mktemp -d)"
-    trap 'rm -rf "$STILL_LIBRARY_DIR"' EXIT
+    test_library="$(mktemp -d)"
+    export STILL_LIBRARY_DIR="$test_library"
+    trap 'rm -rf "$test_library"' EXIT
     case "$platform" in
       macos|windows)
         "$cli" test App.test.tsx "$@"
-        "$cli" test Windows.test.tsx --target "$platform" "$@" ;;
+        "$cli" test Windows.test.tsx --target "$platform" "$@"
+        if [[ "$platform" == macos ]]; then
+          export STILL_LIBRARY_DIR="$STILL_LIBRARY_DIR/keyboard"
+          "$cli" test KeyboardSeed.test.tsx
+          "$cli" test Keyboard.test.tsx --target macos
+        fi ;;
       ios|ios-simulator)
         "$cli" test Mobile.test.tsx "$@" ;;
     esac ;;
