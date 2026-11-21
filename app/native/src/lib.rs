@@ -1,15 +1,14 @@
+mod file_import;
 #[cfg(target_os = "ios")]
 mod ios_legacy;
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "ios"))]
 mod macos;
 mod player;
 mod store;
+#[cfg(windows)]
+mod windows_media;
 
-use nsh_core::{
-    ImageData,
-    picker::{PickRequest, PickedFile},
-    prelude::*,
-};
+use nsh_core::prelude::*;
 use player::Player;
 use std::{
     path::PathBuf,
@@ -57,46 +56,42 @@ pub struct Imported {
     pub skipped: u32,
 }
 
-async fn import_picked(id: String, picked: Vec<PickedFile>) -> Result<Imported, String> {
-    if picked.is_empty() {
-        return Ok(Imported::default());
-    }
+async fn import_selection(
+    id: String,
+    files: Vec<store::MediaInput>,
+    temp: tempfile::TempDir,
+) -> Result<Imported, String> {
     blocking(move || {
-        // One unreadable file must not cost the user the rest of the selection.
-        let offered = picked.len();
-        let readable: Vec<PickedFile> = picked
-            .into_iter()
-            .filter(|file| store::image_extension(file.data.bytes()).is_some())
-            .collect();
-        let skipped = (offered - readable.len()) as u32;
-        let readable_count = readable.len();
-        let (before, paths) = with_store(|s| {
-            let before = s.playlist(&id)?.len();
-            if !readable.is_empty() {
-                s.import(&id, readable)?;
-            }
-            Ok((before, s.playlist(&id)?))
+        let _keep_exports = temp;
+        let (counts, paths, videos) = with_store(|s| {
+            Ok((
+                s.import_media(&id, files)?,
+                s.playlist(&id)?,
+                s.video_posters(&id)?,
+            ))
         })?;
-        let added = (paths.len() - before) as u32;
         let mut p = player().lock().unwrap();
         if p.album.as_ref() == Some(&id) {
+            p.video_posters = videos.into_iter().collect();
             p.update(paths);
         }
-        Ok(Imported {
-            added,
-            existing: (readable_count as u32).saturating_sub(added),
-            skipped,
-        })
+        Ok(counts)
     })
     .await
     .map_err(|e| e.to_string())?
 }
 
-// What a dropped folder is searched for: the formats Still shows, and those macOS converts for it.
-const IMAGE_EXTENSIONS: [&str; 22] = [
-    "jpg", "jpeg", "jpe", "png", "gif", "webp", "heic", "heif", "avif", "tif", "tiff", "bmp",
-    "dng", "cr2", "cr3", "nef", "arw", "raf", "orf", "rw2", "pef", "srw",
-];
+async fn prepare_files(
+    paths: Vec<PathBuf>,
+) -> Result<(Vec<store::MediaInput>, tempfile::TempDir), String> {
+    blocking(move || {
+        let temp = tempfile::tempdir().map_err(|e| e.to_string())?;
+        let files = file_import::inputs(paths, temp.path());
+        Ok((files, temp))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
 
 fn dropped_path(uri: &str) -> PathBuf {
     // `file:///Users/a%20b.jpg`, as the desktops report dropped files.
@@ -160,11 +155,7 @@ fn dropped_files(path: PathBuf, depth: u8, out: &mut Vec<PathBuf>) {
             if depth > 0 {
                 dropped_files(child, depth - 1, out);
             }
-        } else if child
-            .extension()
-            .and_then(|ext| ext.to_str())
-            .is_some_and(|ext| IMAGE_EXTENSIONS.contains(&ext.to_ascii_lowercase().as_str()))
-        {
+        } else if file_import::supported(&child) {
             out.push(child);
         }
     }
@@ -218,19 +209,29 @@ impl Photos {
         with_store(|s| s.view(&mode))
     }
     pub async fn create_album_from_picker(name: String) -> Result<String, String> {
-        let files = pick_images(PickRequest::new(true, 0)).await;
-        if files.is_empty() {
-            return Ok(String::new());
-        }
-        blocking(move || with_store(|s| s.create_with_photos(&name, files)))
-            .await
-            .map_err(|e| e.to_string())?
+        #[cfg(target_os = "ios")]
+        let (files, temp) = {
+            let temp = tempfile::tempdir().map_err(|e| e.to_string())?;
+            let (files, skipped) = macos::pick(temp.path()).await?;
+            if skipped > 0 {
+                return Err("无法读取选中的媒体".into());
+            }
+            (files, temp)
+        };
+        #[cfg(not(target_os = "ios"))]
+        let (files, temp) = prepare_files(file_import::pick().await?).await?;
+        blocking(move || {
+            let _keep_exports = temp;
+            with_store(|s| s.create_with_media(&name, files))
+        })
+        .await
+        .map_err(|e| e.to_string())?
     }
     pub async fn add_files(id: String) -> Result<Imported, String> {
-        let files = pick_images(PickRequest::new(true, 0)).await;
-        import_picked(id, files).await
+        let paths = file_import::pick().await?;
+        let (files, temp) = prepare_files(paths).await?;
+        import_selection(id, files, temp).await
     }
-    /// Imports files and folders dropped on the album, given as `file:` URLs.
     pub async fn add_dropped(id: String, uris: Vec<String>) -> Result<Imported, String> {
         let paths = blocking(move || {
             let mut paths = Vec::new();
@@ -241,50 +242,21 @@ impl Photos {
         })
         .await
         .map_err(|e| e.to_string())?;
-        let mut total = Imported::default();
-        // A folder can hold more than fits in memory at once: read and commit it in runs.
-        for run in paths.chunks(24) {
-            let run = run.to_vec();
-            let offered = run.len();
-            let files = blocking(move || {
-                run.iter()
-                    .filter_map(|path| {
-                        let name = path.file_name()?.to_string_lossy().into_owned();
-                        let data = std::fs::read(path).ok()?;
-                        #[cfg(target_os = "macos")]
-                        let data = match store::image_extension(&data) {
-                            Some(_) => data,
-                            None => macos::export_jpeg(path).unwrap_or(data),
-                        };
-                        Some(PickedFile::new(name, "", ImageData::new(data)))
-                    })
-                    .collect::<Vec<_>>()
-            })
-            .await
-            .map_err(|e| e.to_string())?;
-            total.skipped += (offered - files.len()) as u32;
-            let imported = import_picked(id.clone(), files).await?;
-            total.added += imported.added;
-            total.existing += imported.existing;
-            total.skipped += imported.skipped;
-        }
-        Ok(total)
+        let (files, temp) = prepare_files(paths).await?;
+        import_selection(id, files, temp).await
     }
     pub async fn add_apple_photos(id: String) -> Result<Imported, String> {
-        #[cfg(target_os = "ios")]
+        #[cfg(any(target_os = "macos", target_os = "ios"))]
         {
-            Self::add_files(id).await
-        }
-        #[cfg(target_os = "macos")]
-        {
-            let selected = macos::pick().await?;
-            if selected.is_empty() {
-                return Ok(Imported::default());
-            }
-            let files = blocking(move || macos::read_exports(selected))
-                .await
-                .map_err(|e| e.to_string())??;
-            import_picked(id, files).await
+            let temp = tempfile::tempdir().map_err(|e| e.to_string())?;
+            let (selected, skipped) = macos::pick(temp.path()).await?;
+            let mut counts = if selected.is_empty() {
+                Imported::default()
+            } else {
+                import_selection(id, selected, temp).await?
+            };
+            counts.skipped += skipped;
+            Ok(counts)
         }
         #[cfg(not(any(target_os = "macos", target_os = "ios")))]
         {
@@ -293,8 +265,10 @@ impl Photos {
         }
     }
     pub fn play_album(id: String) -> Result<(), String> {
-        let (paths, shuffle) = with_store(|s| Ok((s.playlist(&id)?, s.shuffle()?)))?;
+        let (paths, videos, shuffle) =
+            with_store(|s| Ok((s.playlist(&id)?, s.video_posters(&id)?, s.shuffle()?)))?;
         let mut p = player().lock().unwrap();
+        p.video_posters = videos.into_iter().collect();
         p.set_shuffle(shuffle);
         p.replace(paths);
         p.album = Some(id);
@@ -320,6 +294,9 @@ impl Photos {
     }
     pub fn next() {
         player().lock().unwrap().step(1)
+    }
+    pub fn finish_video(poster: String, failed: bool) {
+        player().lock().unwrap().finish_video(&poster, failed)
     }
     pub fn previous() {
         player().lock().unwrap().step(-1)
@@ -369,7 +346,10 @@ mod tests {
                 inside.to_string_lossy().replace('\\', "/")
             })
             .collect();
+        #[cfg(any(target_os = "macos", target_os = "ios"))]
         assert_eq!(names, ["a.jpg", "b.PNG", "trip/c.heic", "trip/d.dng"]);
+        #[cfg(not(any(target_os = "macos", target_os = "ios")))]
+        assert_eq!(names, ["a.jpg", "b.PNG"]);
         // A file dropped by itself is offered as it is; the importer decides whether it is an image.
         let mut single = Vec::new();
         dropped_files(root.path().join("notes.txt"), 4, &mut single);
