@@ -4,7 +4,7 @@ import { expect, open, test } from "nsh/test";
 // exercise the actual native importer and deduplication without a system picker.
 const png = (variant: number) => new Uint8Array(variant ? [137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0, 1, 8, 2, 0, 0, 0, 144, 119, 83, 222, 0, 0, 0, 12, 73, 68, 65, 84, 120, 156, 99, 120, 184, 34, 20, 0, 4, 76, 1, 223, 246, 191, 20, 245, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130] : [137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0, 1, 8, 2, 0, 0, 0, 144, 119, 83, 222, 0, 0, 0, 12, 73, 68, 65, 84, 120, 156, 99, 208, 13, 74, 4, 0, 1, 144, 0, 225, 231, 109, 252, 87, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130]);
 
-test("create an album, switch the gallery view, read, annotate and present", async () => {
+test("create an album, switch the gallery view, read and annotate", async () => {
   const app = await open("./App.tsx", { platform: "macos", width: 920, height: 680 });
   app.onPick(() => [{ name: "first.png", data: png(0) }, { name: "broken.png", data: new Uint8Array([1, 2, 3]) }, { name: "second.png", data: png(1) }]);
   async function pullOut() {
@@ -42,22 +42,8 @@ test("create an album, switch the gallery view, read, annotate and present", asy
   await app.waitFor("02 / 2");
   expect(app.value("id:reader-title")).toBe("湖边的早晨");
 
-  await app.press("id:album-play");
-  await app.waitFor("id:display-next");
-  await app.press("id:display-next");
-  await app.waitFor("湖边的早晨");
-  await app.press("id:display-edit");
-  await app.type("id:note-location", "杭州");
-  await app.press("保存描述");
-  await app.waitFor("杭州");
-  await app.window("display").pressClose();
-  // What the display window saved shows in the album too.
-  expect(app.value("id:reader-location")).toBe("杭州");
-
-  // Album actions are a native menu; the name is edited where it is shown.
-  await app.press("id:album-more");
-  expect(app.menu()?.map(item => item.label)).toEqual(["重命名相册", "照片墙自动流动", "删除相册…"]);
-  await app.chooseMenuItem("重命名相册");
+  // The album name is edited where it is shown.
+  await app.press("id:album-title");
   await app.clear("id:album-rename");
   await app.type("id:album-rename", "远方");
   await app.keyboard.press("enter");
@@ -93,7 +79,7 @@ test("create an album, switch the gallery view, read, annotate and present", asy
   await app.waitFor("id:photo-wall");
 });
 
-test("the wall's photo menu and deleting the album from its own menu", async () => {
+test("the wall's photo menu", async () => {
   const app = await open("./App.tsx", { platform: "macos", width: 920, height: 680 });
   app.onPick(() => [{ name: "only.png", data: png(0) }]);
   await app.press("id:home-add");
@@ -108,14 +94,4 @@ test("the wall's photo menu and deleting the album from its own menu", async () 
   await app.keyboard.press("escape");
   await app.waitFor("id:photo-wall");
 
-  // Keeping the album is the answer Escape gives.
-  app.onDialog(() => "取消");
-  await app.press("id:album-more");
-  await app.chooseMenuItem("删除相册…");
-  expect(app.shows("id:photo-wall")).toBe(true);
-  app.onDialog(dialog => { expect(dialog.title).toBe("删除「一页」？"); return "删除相册"; });
-  await app.press("id:album-more");
-  await app.chooseMenuItem("删除相册…");
-  await app.waitFor("id:gallery-cabinet");
-  expect(app.shows("一页")).toBe(false);
 });

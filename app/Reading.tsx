@@ -2,7 +2,7 @@ import { cleanup, effect, keymap, platform, reduceMotion, signal, Text, View, ty
 import { AlertDialog, Button, Input } from "nsh/base";
 import { currentWindow, Menu } from "nsh/desktop";
 import { Photos } from "contactsheet/native";
-import { type Anchor, Divider, fade, Icon, IconButton, onPhoto, onPhotoMuted, pill, Quiet, serif, stage } from "./AlbumControls";
+import { type Anchor, fade, Icon, IconButton, onPhoto, onPhotoMuted, pill, Quiet, serif, stage } from "./AlbumControls";
 import { Hint } from "./Controls";
 import type { Library, Photo } from "./DesktopState";
 import { PhotoWall } from "./PhotoWall";
@@ -12,7 +12,7 @@ type Source = "files" | "apple" | string[];
 type Notice = { text: string; problem: boolean };
 const cover: ViewStyle = { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 };
 
-export function Reading(p: { app: Library; display: () => void }) {
+export function Reading(p: { app: Library }) {
   const window = currentWindow();
   const width = signal(900), height = signal(600);
   const paused = signal(reduceMotion());
@@ -84,12 +84,6 @@ export function Reading(p: { app: Library; display: () => void }) {
       if (next) p.app.photoID.set(next.id); else p.app.reading.set("wall");
     } catch (e) { fail(e); }
   }
-  async function deleteAlbum() {
-    const answer = await AlertDialog.show({ title: `删除「${name()}」？`, description: "只删除这本相册，原始照片不受影响。", actions: [{ id: "cancel", label: "取消", role: "cancel" }, { id: "delete", label: "删除相册", role: "destructive" }] });
-    if (answer.action !== "delete") return;
-    try { Photos.deleteAlbum(p.app.albumID()); p.app.refresh(); p.app.home(); } catch (e) { fail(e); }
-  }
-
   const isCover = (photo: Photo) => { const album = p.app.album(); return !!album && p.app.cover(album)?.id === photo.id; };
   function photoMenu(photo: Photo, at: { x: number; y: number }) {
     Menu.popup([
@@ -102,14 +96,6 @@ export function Reading(p: { app: Library; display: () => void }) {
   async function addMenu(anchor?: Anchor) {
     if (platform.os !== "macos") { add("files"); return; }
     Menu.popup([{ label: "从文件选择…", onSelect: () => { add("files"); } }, { label: "从 Apple 照片选择…", onSelect: () => { add("apple"); } }], await anchor?.());
-  }
-  async function moreMenu(anchor: Anchor) {
-    Menu.popup([
-      { label: "重命名相册", onSelect: rename },
-      { label: "照片墙自动流动", checked: !paused(), onSelect: () => paused.set(!paused()) },
-      { type: "separator" },
-      { label: "删除相册…", onSelect: () => { deleteAlbum(); } },
-    ], await anchor());
   }
   function read() {
     const photo = p.app.photo() ?? p.app.photos()[0];
@@ -174,10 +160,6 @@ export function Reading(p: { app: Library; display: () => void }) {
         <View style={{ ...pill, flexDirection: "row", alignItems: "center", padding: 3, gap: 2 }}>
           <IconButton id="album-wall" label="照片墙" icon="wall" selected={onWall()} onPress={() => p.app.reading.set("wall")} />
           <IconButton id="album-read" label="翻阅" icon="reader" selected={!onWall()} disabled={empty()} onPress={() => read()} />
-          <Divider />
-          <IconButton id="album-play" label="放映" icon="play" disabled={empty()} onPress={() => p.display()} />
-          <IconButton id="album-add" label="添加照片" icon="plus" disabled={p.app.busy()} onPress={anchor => { addMenu(anchor); }} />
-          <IconButton id="album-more" label="更多" icon="more" onPress={anchor => { moreMenu(anchor); }} />
         </View>
       </View>
     </View>

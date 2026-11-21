@@ -66,7 +66,7 @@ export function DesktopApp() {
     { label: app.player().playing ? "暂停" : "播放", onSelect: () => app.control(Photos.toggle) }, { label: "下一张", onSelect: () => app.control(Photos.next) }, {type: "separator"}, {role: "quit"}
   ] }); });
   cleanup(() => Tray.set(null));
-  return <View style={{ flex: 1 }}><If when={app.reading() === "home"} else={<Reading app={app} display={() => display(app.albumID())} />}><Gallery app={app} /></If>
+  return <View style={{ flex: 1 }}><If when={app.reading() === "home"} else={<Reading app={app} />}><Gallery app={app} /></If>
     <Panels app={app} /><If when={app.error() && app.panel() === "none"}><View style={{ ...row, padding: 10, backgroundColor: "#f8e4e1" }}><Text style={{ flex: 1, color: "#863a30" }}>{app.error()}</Text><Action label="关闭" onPress={() => app.error.set("")} /></View></If>
   </View>;
 }
