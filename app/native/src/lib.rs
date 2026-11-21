@@ -1,6 +1,6 @@
 #[cfg(target_os = "ios")]
 mod ios_legacy;
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "ios"))]
 mod macos;
 mod player;
 mod store;
@@ -271,20 +271,17 @@ impl Photos {
         Ok(total)
     }
     pub async fn add_apple_photos(id: String) -> Result<Imported, String> {
-        #[cfg(target_os = "ios")]
+        #[cfg(any(target_os = "macos", target_os = "ios"))]
         {
-            Self::add_files(id).await
-        }
-        #[cfg(target_os = "macos")]
-        {
-            let selected = macos::pick().await?;
-            if selected.is_empty() {
-                return Ok(Imported::default());
-            }
-            let files = blocking(move || macos::read_exports(selected))
-                .await
-                .map_err(|e| e.to_string())??;
-            import_picked(id, files).await
+            let temp = tempfile::tempdir().map_err(|e| e.to_string())?;
+            let (selected, skipped) = macos::pick(temp.path()).await?;
+            let mut counts = if selected.is_empty() {
+                Imported::default()
+            } else {
+                import_selection(id, selected, temp).await?
+            };
+            counts.skipped += skipped;
+            Ok(counts)
         }
         #[cfg(not(any(target_os = "macos", target_os = "ios")))]
         {
