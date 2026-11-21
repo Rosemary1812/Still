@@ -112,6 +112,21 @@ impl Store {
             .into_string()
             .map_err(|_| "无法生成图片地址".into())
     }
+    // The iOS Video host calls NSURL URLWithString, while its Image host
+    // opens native paths. Desktop video hosts also accept native paths.
+    fn video_url(root: &Path, relative: &str) -> Result<String> {
+        let path = Self::url(root, relative)?;
+        #[cfg(target_os = "ios")]
+        return Self::file_url(Path::new(&path));
+        #[cfg(not(target_os = "ios"))]
+        Ok(path)
+    }
+    #[cfg(any(target_os = "ios", test))]
+    fn file_url(path: &Path) -> Result<String> {
+        url::Url::from_file_path(path)
+            .map(String::from)
+            .map_err(|_| "无法生成视频地址".into())
+    }
     pub fn library(&mut self) -> Result<Library> {
         let tx = self.db.transaction()?;
         let mut albums=tx.prepare("SELECT a.id,a.name,c.photo FROM albums a LEFT JOIN covers c ON c.album=a.id ORDER BY a.rowid")?.query_map([],|r|Ok(Album{id:r.get(0)?,name:r.get(1)?,photo_ids:Vec::new(),cover_id:r.get(2)?}))?.collect::<rusqlite::Result<Vec<_>>>()?;
@@ -151,7 +166,9 @@ impl Store {
                 date: row.get(4)?,
                 location: row.get(5)?,
                 kind: row.get(6)?,
-                video_url: motion.map(|p| Self::url(&self.root, &p)).transpose()?,
+                video_url: motion
+                    .map(|p| Self::video_url(&self.root, &p))
+                    .transpose()?,
                 duration: row.get(8)?,
             });
         }
@@ -331,6 +348,30 @@ mod tests {
         assert_eq!(store.playlist(&album).unwrap(), [source.clone()]);
         assert!(source.contains("Application Support"));
         assert_eq!(fs::read(source).unwrap(), FIRST);
+    }
+    #[test]
+    fn ios_video_url_round_trips_reserved_characters_spaces_and_unicode() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join("Still #相册 100%");
+        let relative = "media/湖边 #1%.mov";
+        let native = root.join(relative);
+        let file_url = Store::file_url(&native).unwrap();
+        assert!(file_url.starts_with("file:///"));
+        for escaped in ["%20", "%23", "%25", "%E6%B9%96"] {
+            assert!(file_url.contains(escaped), "{file_url}");
+        }
+        assert_eq!(
+            url::Url::parse(&file_url).unwrap().to_file_path().unwrap(),
+            native
+        );
+        #[cfg(target_os = "ios")]
+        assert_eq!(Store::video_url(&root, relative).unwrap(), file_url);
+        #[cfg(not(target_os = "ios"))]
+        assert_eq!(
+            Path::new(&Store::video_url(&root, relative).unwrap()),
+            native
+        );
+        assert!(Store::video_url(&root, "../outside.mov").is_err());
     }
     #[test]
     fn creating_album_from_picker_is_all_or_nothing() {
