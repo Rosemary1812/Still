@@ -133,7 +133,8 @@ private func export(_ provider: NSItemProvider, to directory: URL) async throws 
        provider.hasItemConformingToTypeIdentifier(UTType.movie.identifier) {
         let still = try await copyRepresentation(provider, type: .image, directory: directory, name: "still")
         let motion = try await copyRepresentation(provider, type: .movie, directory: directory, name: "motion")
-        if let id = liveIdentifier(still), id == liveIdentifier(motion) {
+        if let id = liveIdentifier(still) {
+            guard id == liveIdentifier(motion) else { throw CocoaError(.fileReadCorruptFile) }
             return try liveExport(still: still, motion: motion, poster: poster)
         }
     }
