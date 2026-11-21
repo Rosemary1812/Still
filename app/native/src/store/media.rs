@@ -171,7 +171,7 @@ impl Staged {
     }
 }
 
-struct Installed {
+struct Prepared {
     digest: String,
     preview: String,
     motion: Option<String>,
@@ -180,22 +180,15 @@ struct Installed {
 }
 
 impl Validated {
-    fn install(self, store: &Store) -> Result<Installed> {
-        let dir = store.root.join("media");
+    fn stage(self, root: &Path) -> Result<Prepared> {
+        let dir = root.join("media");
         let still = self.still.map(|s| Staged::resource(&dir, s)).transpose()?;
         let Some(motion) = self.motion else {
             let still = still.expect("photo validation requires a still image");
             let digest = still.digest.clone();
-            // Migrated libraries may use a different managed path for the same digest.
-            let preview = store
-                .db
-                .query_row("SELECT path FROM photos WHERE digest=?1", [&digest], |r| {
-                    r.get(0)
-                })
-                .optional()?
-                .unwrap_or_else(|| still.path());
-            still.install(&store.root, &preview)?;
-            return Ok(Installed {
+            let preview = still.path();
+            still.install(root, &preview)?;
+            return Ok(Prepared {
                 digest,
                 preview,
                 motion: None,
@@ -204,7 +197,7 @@ impl Validated {
             });
         };
         let motion = Staged::resource(&dir, motion)?;
-        let mut motion_path = motion.path();
+        let motion_path = motion.path();
         let digest = match &still {
             Some(still) => {
                 let mut pair = Sha256::new();
@@ -214,15 +207,6 @@ impl Validated {
             }
             None => format!("video-{}", motion.digest),
         };
-        // A re-export may have a different extension or generate a different poster.
-        // Reuse the paths already referenced by other albums and open readers.
-        let existing = store.db.query_row(
-            "SELECT p.path,m.motion FROM photos p JOIN media_resources m ON m.photo=p.id WHERE p.digest=?1",
-            [&digest],|r|Ok((r.get::<_,String>(0)?,r.get::<_,String>(1)?)))
-            .optional()?;
-        if let Some((_, path)) = &existing {
-            motion_path.clone_from(path);
-        }
         let poster = match self.poster {
             Some(p) => Staged::resource(&dir, p)?,
             None => match &still {
@@ -234,22 +218,71 @@ impl Validated {
                 )?,
             },
         };
-        let preview = existing
-            .map(|(path, _)| path)
-            .unwrap_or_else(|| format!("media/{digest}.{}", poster.ext));
+        let preview = format!("media/{digest}.{}", poster.ext);
         let original_still = still.as_ref().map(Staged::path);
         if let (Some(still), Some(path)) = (still, &original_still) {
-            still.install(&store.root, path)?;
+            still.install(root, path)?;
         }
-        motion.install(&store.root, &motion_path)?;
-        poster.install(&store.root, &preview)?;
-        Ok(Installed {
+        motion.install(root, &motion_path)?;
+        poster.install(root, &preview)?;
+        Ok(Prepared {
             digest,
             preview,
             motion: Some(motion_path),
             original_still,
             duration: self.duration,
         })
+    }
+}
+
+// The staging directory lives on the library volume. Its files are complete and
+// synced before the database write lock is taken. Failed selections drop it whole.
+struct Publication<'a> {
+    root: &'a Path,
+    stage: &'a Path,
+    created: Vec<String>,
+}
+
+impl Publication<'_> {
+    fn publish(&mut self, source: &str, destination: &str) -> Result<()> {
+        Store::url(self.root, destination)?;
+        let target = self.root.join(destination);
+        if target.is_file() {
+            return Ok(());
+        }
+        let parent = target.parent().ok_or("无效的媒体路径")?;
+        fs::create_dir_all(parent)?;
+        let staged = self.stage.join(source);
+        if fs::hard_link(&staged, &target).is_err() {
+            // Filesystems without hard links still publish an atomic, durable copy.
+            let mut copy = NamedTempFile::new_in(parent)?;
+            io::copy(&mut File::open(staged)?, copy.as_file_mut())?;
+            copy.as_file().sync_all()?;
+            copy.persist_noclobber(&target)?;
+        }
+        self.created.push(destination.to_owned());
+        #[cfg(unix)]
+        File::open(parent)?.sync_all()?;
+        Ok(())
+    }
+    fn clean_rollback(self, db: &mut rusqlite::Connection) -> Result<()> {
+        if self.created.is_empty() {
+            return Ok(());
+        }
+        let cleanup = db.transaction_with_behavior(TransactionBehavior::Immediate)?;
+        for path in self.created {
+            let used: bool = cleanup.query_row(
+                "SELECT EXISTS(SELECT 1 FROM photos WHERE path=?1)
+                     OR EXISTS(SELECT 1 FROM media_resources WHERE motion=?1 OR original_still=?1)",
+                [&path],
+                |r| r.get(0),
+            )?;
+            if !used {
+                fs::remove_file(self.root.join(path))?;
+            }
+        }
+        cleanup.commit()?;
+        Ok(())
     }
 }
 
@@ -276,57 +309,93 @@ impl Store {
         files: Vec<MediaInput>,
     ) -> Result<ImportCounts> {
         let mut counts = ImportCounts::default();
-        let mut installed = Vec::new();
+        let stage = tempfile::Builder::new()
+            .prefix(".import-")
+            .tempdir_in(self.root.join("media"))?;
+        fs::create_dir(stage.path().join("media"))?;
+        let mut prepared = Vec::new();
         for file in files {
             match file.validate() {
-                Ok(asset) => installed.push(asset.install(self)?),
+                Ok(asset) => prepared.push(asset.stage(stage.path())?),
                 Err(e) if name.is_some() => return Err(format!("无法读取选中的媒体：{e}").into()),
                 Err(_) => counts.skipped += 1,
             }
         }
-        let tx = self
-            .db
-            .transaction_with_behavior(TransactionBehavior::Immediate)?;
-        if let Some(name) = name {
-            tx.execute("INSERT INTO albums(id,name) VALUES(?1,?2)", [album, name])?;
-        } else {
-            tx.query_row("SELECT 1 FROM albums WHERE id=?1", [album], |_| Ok(()))?;
-        }
-        for asset in installed {
-            let id = tx
-                .query_row(
-                    "SELECT id FROM photos WHERE digest=?1",
-                    [&asset.digest],
-                    |r| r.get::<_, String>(0),
-                )
-                .optional()?;
-            let id = match id {
-                Some(id) => id,
-                None => {
-                    let id = Uuid::new_v4().to_string();
-                    tx.execute(
-                        "INSERT INTO photos(id,path,digest) VALUES(?1,?2,?3)",
-                        params![id, asset.preview, asset.digest],
-                    )?;
-                    if let Some(motion) = asset.motion {
-                        let kind = if asset.original_still.is_some() {
-                            "live"
-                        } else {
-                            "video"
-                        };
-                        tx.execute("INSERT INTO media_resources(photo,kind,motion,original_still,duration) VALUES(?1,?2,?3,?4,?5)",params![id,kind,motion,asset.original_still,asset.duration])?;
-                    }
-                    id
-                }
-            };
-            let added = tx.execute("INSERT INTO members(album,photo,position) SELECT ?1,?2,COALESCE(MAX(position),-1)+1 FROM members WHERE album=?1 ON CONFLICT(album,photo) DO NOTHING",params![album,id])?;
-            if added == 1 {
-                counts.added += 1
+        let mut publication = Publication {
+            root: &self.root,
+            stage: stage.path(),
+            created: Vec::new(),
+        };
+        let write = || -> Result<()> {
+            let tx = self
+                .db
+                .transaction_with_behavior(TransactionBehavior::Immediate)?;
+            if let Some(name) = name {
+                tx.execute("INSERT INTO albums(id,name) VALUES(?1,?2)", [album, name])?;
             } else {
-                counts.existing += 1
+                tx.query_row("SELECT 1 FROM albums WHERE id=?1", [album], |_| Ok(()))?;
             }
+            for asset in prepared {
+                let previous = tx
+                    .query_row(
+                        "SELECT p.id,p.path,m.motion,m.original_still FROM photos p
+                 LEFT JOIN media_resources m ON m.photo=p.id WHERE p.digest=?1",
+                        [&asset.digest],
+                        |r| {
+                            Ok((
+                                r.get::<_, String>(0)?,
+                                r.get::<_, String>(1)?,
+                                r.get::<_, Option<String>>(2)?,
+                                r.get::<_, Option<String>>(3)?,
+                            ))
+                        },
+                    )
+                    .optional()?;
+                let (id, preview, motion, still) = match previous {
+                    Some(row) => row,
+                    None => {
+                        let id = Uuid::new_v4().to_string();
+                        tx.execute(
+                            "INSERT INTO photos(id,path,digest) VALUES(?1,?2,?3)",
+                            params![id, asset.preview, asset.digest],
+                        )?;
+                        if let Some(motion) = &asset.motion {
+                            let kind = if asset.original_still.is_some() {
+                                "live"
+                            } else {
+                                "video"
+                            };
+                            tx.execute("INSERT INTO media_resources(photo,kind,motion,original_still,duration) VALUES(?1,?2,?3,?4,?5)",params![id,kind,motion,asset.original_still,asset.duration])?;
+                        }
+                        (
+                            id,
+                            asset.preview.clone(),
+                            asset.motion.clone(),
+                            asset.original_still.clone(),
+                        )
+                    }
+                };
+                publication.publish(&asset.preview, &preview)?;
+                if let (Some(source), Some(target)) = (&asset.motion, &motion) {
+                    publication.publish(source, target)?;
+                }
+                if let (Some(source), Some(target)) = (&asset.original_still, &still) {
+                    publication.publish(source, target)?;
+                }
+                let added = tx.execute("INSERT INTO members(album,photo,position) SELECT ?1,?2,COALESCE(MAX(position),-1)+1 FROM members WHERE album=?1 ON CONFLICT(album,photo) DO NOTHING",params![album,id])?;
+                if added == 1 {
+                    counts.added += 1
+                } else {
+                    counts.existing += 1
+                }
+            }
+            tx.commit()?;
+            Ok(())
+        };
+        if let Err(error) = write() {
+            publication.clean_rollback(&mut self.db)?;
+            return Err(error);
         }
-        tx.commit()?;
         Ok(counts)
     }
 }
@@ -479,6 +548,70 @@ mod tests {
             );
             assert_eq!(fs::read(&photo.url).unwrap(), STILL);
         }
+    }
+
+    #[test]
+    fn failed_membership_removes_new_resources_and_preserves_shared_ones() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = Store::open(dir.path().into()).unwrap();
+        let movie = dir.path().join("input.mov");
+        let still = dir.path().join("input.png");
+        fs::write(&movie, MOVIE).unwrap();
+        fs::write(&still, STILL).unwrap();
+        let original = store
+            .create_with_media("Original", vec![MediaInput::Photo(still.clone())])
+            .unwrap();
+        let shared = store.playlist(&original).unwrap().pop().unwrap();
+        store
+            .db
+            .execute_batch(
+                "CREATE TRIGGER fail_membership BEFORE INSERT ON members
+             BEGIN SELECT RAISE(ABORT,'failed membership'); END;",
+            )
+            .unwrap();
+        let failed = store.create_with_media(
+            "Failed",
+            vec![MediaInput::Live {
+                still,
+                motion: movie,
+                poster: None,
+                duration: None,
+            }],
+        );
+        assert!(failed.is_err());
+        assert_eq!(store.library().unwrap().albums.len(), 1);
+        assert_eq!(fs::read(shared).unwrap(), STILL);
+        assert_eq!(fs::read_dir(dir.path().join("media")).unwrap().count(), 1);
+    }
+
+    #[test]
+    fn rollback_keeps_a_copy_claimed_by_another_writer() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut first = Store::open(dir.path().into()).unwrap();
+        let still = dir.path().join("input.png");
+        fs::write(&still, STILL).unwrap();
+        let stage = tempfile::tempdir_in(dir.path()).unwrap();
+        fs::create_dir(stage.path().join("media")).unwrap();
+        let asset = MediaInput::Photo(still.clone())
+            .validate()
+            .unwrap()
+            .stage(stage.path())
+            .unwrap();
+        let mut publication = Publication {
+            root: dir.path(),
+            stage: stage.path(),
+            created: vec![],
+        };
+        publication.publish(&asset.preview, &asset.preview).unwrap();
+        // The failed transaction has released its lock. A separate connection
+        // can commit a reference before the first connection reacquires it.
+        let mut second = Store::open(dir.path().into()).unwrap();
+        second
+            .create_with_media("Other", vec![MediaInput::Photo(still)])
+            .unwrap();
+        publication.clean_rollback(&mut first.db).unwrap();
+        let item = second.library().unwrap().photos.remove(0);
+        assert_eq!(fs::read(item.url).unwrap(), STILL);
     }
 
     #[test]

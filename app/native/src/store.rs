@@ -384,6 +384,7 @@ mod tests {
                 .is_err()
         );
         assert!(store.library().unwrap().albums.is_empty());
+        assert_eq!(fs::read_dir(dir.path().join("media")).unwrap().count(), 0);
         let id = store
             .create_with_media("success", vec![image("first.png")])
             .unwrap();
