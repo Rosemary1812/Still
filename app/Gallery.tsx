@@ -12,11 +12,11 @@ type Rect = { x: number; y: number; width: number; height: number };
 type Flight = { album: Album; spine: boolean; from: Rect; tilt: number; place: () => Promise<Rect | undefined>; landed: () => void };
 type Stage = { entering: () => boolean; ready: () => boolean; held: () => string; inspect: (flight: Flight) => void };
 
-export function Artwork(p: { photo?: Photo; fit?: "contain" | "cover"; light?: boolean }) {
+export function Artwork(p: { photo?: Photo; fit?: "contain" | "cover"; light?: boolean; compactBadge?: boolean }) {
   const failed = signal("");
   return <View style={{ width: "100%", height: "100%", alignItems: "center", justifyContent: "center", overflow: "hidden", backgroundColor: p.light ? "#e6e2da" : "#343332" }}>
     <If when={p.photo?.url && p.photo.url !== failed()} else={<Text style={{ color: p.light ? muted : "#c6c2bb", fontSize: 12 }}>{p.photo ? (p.photo.kind === "video" ? "视频封面不可用" : `${mediaName(p.photo)}不可用`) : "Still"}</Text>}><Image src={p.photo?.url ?? ""} style={{ width: "100%", height: "100%", objectFit: p.fit ?? "cover" }} onError={() => failed.set(p.photo?.url ?? "")} /></If>
-    <MediaBadge photo={p.photo} />
+    <MediaBadge photo={p.photo} compact={p.compactBadge} />
   </View>;
 }
 export function Switcher(p: { app: Library; prefix: string }) {
@@ -40,7 +40,7 @@ async function frameOf(view: ViewRef | undefined, width: number, height: number,
 /** The cover with the album's name, the same on the shelf and in the detail view. */
 function Sleeve(p: { app: Library; album: Album; side: number; plain?: boolean }) {
   return <View style={{ width: "100%", height: "100%", overflow: "hidden", backgroundColor: "#343332" }}>
-    <Artwork photo={p.app.cover(p.album)} />
+    <Artwork photo={p.app.cover(p.album)} compactBadge={p.side < 96} />
     <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, opacity: p.plain ? 0 : 1, transitionProperty: "opacity", transitionDuration: 200, paddingHorizontal: p.side * 0.06, paddingBottom: p.side * 0.055, paddingTop: p.side * 0.16, backgroundImage: "linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.62) 100%)" }}><Text style={{ color: "#fff", fontFamily: "Georgia", fontSize: p.side * 0.075, numberOfLines: 1 }}>{p.album.name}</Text></View>
   </View>;
 }
@@ -101,7 +101,7 @@ function Cover(p: { app: Library; album: Album; index: number; side: number; awa
     style={{ width: p.side, height: p.side, zIndex: front() ? 2 : 1, opacity: hidden() ? 0 : 1, pointerEvents: hidden() ? "none" : "auto" }}>
     <View style={{ width: "100%", height: "100%", opacity: shown, transformOrigin: [p.side / 2 - p.away.x, p.side / 2 - p.away.y], transform: pose() }}>
       <View style={{ position: "absolute", top: "100%", left: 0, right: 0, height: 7, overflow: "hidden", opacity: up() ? 0 : 0.2, transitionProperty: "opacity", transitionDuration: up() ? liftMs * 0.45 : dropMs }}>
-        <View style={{ width: "100%", height: p.side, scale: [1, -1] }}><Artwork photo={p.app.cover(p.album)} /></View>
+        <View style={{ width: "100%", height: p.side, scale: [1, -1] }}><Artwork photo={p.app.cover(p.album)} compactBadge={p.side < 96} /></View>
       </View>
       <Button testID={`album-${p.album.id}`} accessibilityLabel={`${p.album.name}，${p.app.count(p.album)}，查看相册详情`} onPress={inspect}
         style={{ width: "100%", height: "100%", boxShadow: up() ? "2px 20px 15px rgba(0,0,0,0.16)" : "2px 6px 5px rgba(0,0,0,0.26)", transitionProperty: "box-shadow", transitionDuration: up() ? liftMs : dropMs }}
@@ -165,7 +165,7 @@ function Spine(p: { app: Library; album: Album; stage: Stage }) {
       style={{ width: 33, height: 301, padding: 2, gap: 1, borderRadius: 3, borderWidth: 1, borderColor: "#20211e", backgroundColor: "#52534e", translate: [0, lift],
         boxShadow: up() ? "3px 10px 16px rgba(0,0,0,0.25)" : "1px 2px 2px rgba(0,0,0,0.10)", transitionProperty: "box-shadow", transitionDuration: 350, transitionTimingFunction: "ease-out" }}
       focusVisibleStyle={{ borderColor: "#81aff0", borderWidth: 2 }}>
-      <View style={metal} /><View style={{ flex: 1 }}><Artwork photo={p.app.cover(p.album)} /></View><View style={metal} />
+      <View style={metal} /><View style={{ flex: 1 }}><Artwork photo={p.app.cover(p.album)} compactBadge /></View><View style={metal} />
     </Button>
   </View>;
 }

@@ -154,7 +154,7 @@ export function MobileApp() {
         <View class="flex-row flex-wrap gap-1">
           <Each of={ids()} key={id => id}>{id => <Button testID={`mobile-photo-${ids().indexOf(id()) + 1}`} accessibilityLabel={itemLabel(photo(id()), `${mediaName(photo(id()))} ${ids().indexOf(id()) + 1}`)} style={{width:landscape() ? "19%" : "32%",aspectRatio:1}} onPress={() => {photoId.set(id());page.set("reader");}}>
             <Image src={photo(id())?.url ?? ""} style={{width:"100%",height:"100%",objectFit:"cover"}} />
-            <MediaBadge photo={photo(id())} />
+            <MediaBadge photo={photo(id())} compact />
           </Button>}</Each>
         </View>
       </View></Scroll>

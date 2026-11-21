@@ -43,7 +43,7 @@ export function PhotoWall(p: { app: Library; width: number; height: number; paus
       <Each of={cells()}>{x => <View style={{ height: edge(), width: edge(), flexShrink: 0 }} onContextMenu={e => { const photo = at(r(), x()); if (photo) p.menu(photo, e.pagePosition); }}>
         <Button accessibilityLabel={itemLabel(at(r(), x()), `查看${mediaName(at(r(), x()))} ${1 + index(r(), x())}`)} onPress={() => { const photo = at(r(), x()); if (photo) p.app.select(photo.id); }}
           style={{ flex: 1 }} hoverStyle={{ opacity: 0.86 }} focusVisibleStyle={{ borderColor: "#9cc4fb", borderWidth: 3 }}>
-          <Artwork photo={at(r(), x())} />
+          <Artwork photo={at(r(), x())} compactBadge={edge() < 96} />
         </Button>
       </View>}</Each>
     </View>}</Each>

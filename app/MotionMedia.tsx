@@ -12,9 +12,10 @@ function label(photo?: Photo) {
   return seconds > 0 ? `视频 · ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}` : "视频";
 }
 
-export function MediaBadge(p: { photo?: Photo }) {
-  return <If when={label(p.photo)}><View style={{ ...badge, position: "absolute", left: 4, bottom: 4, pointerEvents: "none" }}>
-    <Text style={caption}>{label(p.photo)}</Text>
+export function MediaBadge(p: { photo?: Photo; compact?: boolean }) {
+  return <If when={label(p.photo)}><View style={{ ...badge, position: "absolute", left: 3, bottom: 3, pointerEvents: "none",
+    ...(p.compact ? { width: 16, height: 16, borderRadius: 8, alignItems: "center", justifyContent: "center", paddingHorizontal: 0, paddingVertical: 0 } : {}) }}>
+    <Text style={{ ...caption, numberOfLines: 1, fontSize: p.compact ? 10 : 11 }}>{p.compact ? (p.photo?.kind === "video" ? "▶" : "◎") : label(p.photo)}</Text>
   </View></If>;
 }
 

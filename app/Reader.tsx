@@ -138,7 +138,7 @@ export function Reader(p: { app: Library; focusedNote: Signal<InputRef | null>; 
         <Button accessibilityLabel={itemLabel(item(), `查看${thisItem(item())}`)} selected={item().id === p.app.photoID()} onPress={() => p.app.select(item().id)}
           style={{ ...fade, width: thumb, height: thumb, borderRadius: 7, overflow: "hidden", borderWidth: 2, borderColor: item().id === p.app.photoID() ? onPhoto : "transparent", opacity: item().id === p.app.photoID() ? 1 : 0.5 }}
           hoverStyle={{ opacity: 1 }} focusVisibleStyle={{ borderColor: "#9cc4fb", opacity: 1 }}>
-          <Artwork photo={item()} />
+          <Artwork photo={item()} compactBadge />
         </Button>
       </View>}</Each>
     </Scroll>
