@@ -2,10 +2,10 @@ import { cleanup, computed, effect, Image, keymap, platform, signal, Text, View 
 import { Dialog } from "nsh/base";
 import { currentWindow, Tray, Window } from "nsh/desktop";
 import { Photos } from "contactsheet/native";
-import { Action, centered, ink, paper, row } from "./Controls";
+import { Action, centered, row } from "./Controls";
 import { makeLibrary, type Library } from "./DesktopState";
 import { Gallery } from "./Gallery";
-import { Annotation, Panels } from "./Panels";
+import { Annotation, card, dim, Heading, Panels } from "./Panels";
 import { Reading } from "./Reading";
 import icon from "./assets/tray.svg";
 
@@ -41,10 +41,10 @@ function Display(p: { app: Library }) {
       <Text style={{ color: "#fff", fontSize: 13 }}>{`${p.app.player().paths.indexOf(current()) + 1} / ${p.app.player().paths.length}`}</Text>
       <If when={photo()}><Action id="display-edit" label="编辑描述" onPress={edit} /></If>
     </View>
-    <If when={editing()}><Dialog accessibilityLabel="编辑放映照片" animation="none" onOpenChange={e => { if (!e.open) editing.set(""); }} style={{ width: 360, maxWidth: "92%", padding: 20, gap: 12, borderRadius: 16, backgroundColor: paper }}>
-      <View style={{ ...row, justifyContent: "space-between" }}><Text style={{ color: ink, fontSize: 20 }}>编辑照片描述</Text><Action label="取消" onPress={() => editing.set("")} /></View>
-      <Annotation photo={p.app.library().photos.find(item => item.id === editing())} save={(...values) => { try { Photos.saveAnnotation(editing(), ...values); p.app.refresh(); editing.set(""); } catch (e) { error.set(String(e)); } }} />
-      <If when={error()}><Text style={{ color: "#903733" }}>{error()}</Text></If>
+    <If when={editing()}><Dialog accessibilityLabel="编辑放映照片" animation="fade" onOpenChange={e => { if (!e.open) editing.set(""); }} backdropStyle={dim} style={{ ...card, width: 300 }}>
+      <Heading title="编辑照片描述" />
+      <Annotation photo={p.app.library().photos.find(item => item.id === editing())} cancel={() => editing.set("")} save={(...values) => { try { Photos.saveAnnotation(editing(), ...values); p.app.refresh(); editing.set(""); } catch (e) { error.set(String(e)); } }} />
+      <If when={error()}><Text style={{ color: "#c0392b", fontSize: 12 }}>{error()}</Text></If>
     </Dialog></If>
   </View>;
 }

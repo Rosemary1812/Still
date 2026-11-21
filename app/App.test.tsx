@@ -14,6 +14,11 @@ test("create an album, switch the gallery view, read and annotate", async () => 
     await app.waitUntil(() => !app.shows("id:album-detail"));
   }
   await app.press("id:home-add");
+  // One Escape closes the panel, though the name field holds the focus.
+  await app.type("id:album-name", "不要了");
+  await app.keyboard.press("escape");
+  await app.waitUntil(() => !app.shows("id:album-panel"));
+  await app.press("id:home-add");
   await app.type("id:album-name", "旅行相册");
   await app.press("id:save-album");
   // A new album opens on its own page; nothing covers it.
@@ -83,8 +88,9 @@ test("the wall's photo menu", async () => {
   const app = await open("./App.tsx", { platform: "macos", width: 920, height: 680 });
   app.onPick(() => [{ name: "only.png", data: png(0) }]);
   await app.press("id:home-add");
+  expect(app.enabled("id:save-album")).toBe(false);
   await app.type("id:album-name", "一页");
-  await app.press("id:save-album");
+  await app.submit("id:album-name");
   await app.press("id:empty-files");
   await app.waitFor("id:photo-wall");
   await app.rightClick("label:查看照片 1 >> nth=0");
