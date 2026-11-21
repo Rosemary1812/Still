@@ -1,5 +1,5 @@
 import { Canvas, Path2D, Text, View, type ViewStyle } from "nsh";
-import { Button, Input, Tooltip } from "nsh/base";
+import { Button, Tooltip } from "nsh/base";
 
 export const ink = "#262421";
 export const muted = "#68635d";
@@ -53,7 +53,4 @@ export function GlassButton(p: { id: string; label: string; icon: Symbol; onPres
 }
 export function Action(p: { label: string; onPress: () => void; id?: string; disabled?: boolean; primary?: boolean; danger?: boolean }) {
   return <Button testID={p.id} accessibilityLabel={p.label} disabled={p.disabled} onPress={p.onPress} style={{ paddingVertical: 7, paddingHorizontal: 12, backgroundColor: p.primary ? "#363430" : "#eceae5", borderRadius: 9, alignItems: "center", justifyContent: "center" }} hoverStyle={{ opacity: 0.82 }} disabledStyle={{ opacity: 0.4 }} focusVisibleStyle={{ borderWidth: 1, borderColor: "#698fc0" }}><Text style={{ color: p.primary ? "#fff" : p.danger ? "#963a39" : ink, fontSize: 13 }}>{p.label}</Text></Button>;
-}
-export function Field(p: { label: string; value: string; change: (s: string) => void; id: string; multiline?: boolean; placeholder?: string }) {
-  return <View style={{ gap: 5 }}><Text style={{ color: muted, fontSize: 12 }}>{p.label}</Text><Input testID={p.id} placeholder={p.placeholder ?? p.label} value={p.value} onChange={e => p.change(e.value)} multiline={p.multiline} style={{ height: p.multiline ? 78 : 35, color: ink, fontSize: 14, paddingHorizontal: 9, borderRadius: 6, borderWidth: 1, borderColor: "#cbc8bf", backgroundColor: "#fff" }} /></View>;
 }
