@@ -49,22 +49,41 @@ function Display(p: { app: Library }) {
     </Dialog></If>
   </View>;
 }
+export function openDisplay(app: Library, albumID?: string) {
+  app.command(() => {
+    if (albumID) {
+      Photos.playAlbum(albumID);
+      app.player.set(Photos.snapshot());
+    }
+    const existing = Window.get("display");
+    if (existing) { existing.focus(); return; }
+    const display = Window.open(() => <Display app={app} />, {
+      id: "display", title: "Still · 放映", defaultSize: { width: 660, height: 510 },
+    });
+    display.on("close", () => {
+      if (Photos.snapshot().playing) app.control(Photos.toggle);
+    });
+    display.focus();
+  });
+}
+
+export function toggleDisplay(app: Library) {
+  if (!app.player().playing && app.player().current) openDisplay(app);
+  app.control(Photos.toggle);
+}
+
 export function DesktopApp() {
   const main = currentWindow();
   const app = makeLibrary();
   if (platform.os === "macos") {
     main.set({ titleBar: { style: "hidden", height: 46 } });
   }
-  function display(albumID?: string) {
-    app.command(() => { if (albumID) { Photos.playAlbum(albumID); app.player.set(Photos.snapshot()); } const Player = () => <Display app={app} />;
-      Window.open(Player, { id: "display", title: "Still · 放映", defaultSize: { width: 660, height: 510 } }).focus(); });
-  }
   main.on("closePress", () => main.hide());
   const poll = setInterval(() => { const next = Photos.snapshot(); if (next.revision !== app.player().revision) app.player.set(next); },250);
   cleanup(() => clearInterval(poll));
   effect(() => { Tray.set({ icon, tooltip: app.player().playing ? "Still · 播放中" : "Still", onClick: () => main.focus(), menu: [
-    { label: "显示相册", onSelect: () => main.focus() }, { label: "打开放映窗口", onSelect: () => display() }, { label: "选择放映相册", disabled: !app.library().albums.some(a => a.photoIds.length > 0), submenu: app.library().albums.map(a => ({ label: a.name, disabled: !a.photoIds.length, onSelect: () => display(a.id) })) }, { type: "separator" },
-    { label: app.player().playing ? "暂停" : "播放", onSelect: () => app.control(Photos.toggle) }, { label: "下一张", onSelect: () => app.control(Photos.next) }, {type: "separator"}, {role: "quit"}
+    { label: "显示相册", onSelect: () => main.focus() }, { label: "打开放映窗口", onSelect: () => openDisplay(app) }, { label: "选择放映相册", disabled: !app.library().albums.some(a => a.photoIds.length > 0), submenu: app.library().albums.map(a => ({ label: a.name, disabled: !a.photoIds.length, onSelect: () => openDisplay(app, a.id) })) }, { type: "separator" },
+    { label: app.player().playing ? "暂停" : "播放", onSelect: () => toggleDisplay(app) }, { label: "下一张", onSelect: () => app.control(Photos.next) }, {type: "separator"}, {role: "quit"}
   ] }); });
   cleanup(() => Tray.set(null));
   return <View style={{ flex: 1 }}><If when={app.reading() === "home"} else={<Reading app={app} />}><Gallery app={app} /></If>
