@@ -1,4 +1,4 @@
-import { importSummary } from "./MediaImport";
+import { importSummary, mediaName, thisItem } from "./MediaLabels";
 import { cleanup, effect, keymap, platform, reduceMotion, signal, Text, View, type ViewStyle } from "nsh";
 import { AlertDialog, Button, Input } from "nsh/base";
 import { currentWindow, Menu } from "nsh/desktop";
@@ -71,7 +71,7 @@ export function Reading(p: { app: Library }) {
     try { Photos.setCover(p.app.albumID(), photo.id); p.app.refresh(); say("已设为相册封面"); } catch (e) { fail(e); }
   }
   async function remove(photo: Photo) {
-    const answer = await AlertDialog.show({ title: "从相册移除这张照片？", description: "只从这本相册移除，原始照片不受影响。", actions: [{ id: "cancel", label: "取消", role: "cancel" }, { id: "remove", label: "移除", role: "destructive" }] });
+    const answer = await AlertDialog.show({ title: `从相册移除${thisItem(photo)}？`, description: `只从这本相册移除，原始${mediaName(photo)}不受影响。`, actions: [{ id: "cancel", label: "取消", role: "cancel" }, { id: "remove", label: "移除", role: "destructive" }] });
     if (answer.action !== "remove") return;
     const at = p.app.photos().findIndex(item => item.id === photo.id), current = p.app.photoID() === photo.id;
     try {
@@ -85,7 +85,7 @@ export function Reading(p: { app: Library }) {
   const isCover = (photo: Photo) => { const album = p.app.album(); return !!album && p.app.cover(album)?.id === photo.id; };
   function photoMenu(photo: Photo, at: { x: number; y: number }) {
     Menu.popup([
-      onWall() && { label: "查看照片", onSelect: () => p.app.select(photo.id) },
+      onWall() && { label: `查看${mediaName(photo)}`, onSelect: () => p.app.select(photo.id) },
       { label: isCover(photo) ? "已是相册封面" : "设为相册封面", disabled: isCover(photo), onSelect: () => setCover(photo) },
       { type: "separator" },
       { label: "从相册移除…", onSelect: () => { remove(photo); } },
@@ -135,7 +135,7 @@ export function Reading(p: { app: Library }) {
         <PhotoWall app={p.app} width={width()} height={height()} paused={paused() || renaming() || p.app.panel() !== "none"} menu={photoMenu} />
         <View style={{ ...cover, top: undefined, height: 170, justifyContent: "flex-end", paddingHorizontal: 26, paddingBottom: 22, gap: 4, pointerEvents: "none", backgroundImage: "linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.72) 100%)", opacity: shown() ? 1 : 0, ...fade, transitionDuration: 420 }}>
           <Text style={{ color: onPhoto, fontSize: 30, fontFamily: serif, numberOfLines: 1 }}>{name()}</Text>
-          <Text style={{ color: onPhotoMuted, fontSize: 12.5, letterSpacing: 0.4 }}>{`${p.app.photos().length} 张照片`}</Text>
+          <Text style={{ color: onPhotoMuted, fontSize: 12.5, letterSpacing: 0.4 }}>{p.app.count(p.app.album())}</Text>
         </View>
       </If>
     </If>

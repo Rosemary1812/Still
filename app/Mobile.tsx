@@ -1,6 +1,6 @@
-import { importSummary } from "./MediaImport";
+import { albumCount, importSummary, itemLabel, mediaName, thisItem } from "./MediaLabels";
 import { MediaBadge, MotionMedia } from "./MotionMedia";
-import { Image, Scroll, Text, View, safeAreaInsets, signal, fontScale, screenReaderEnabled, announce } from "nsh";
+import { computed, Image, Scroll, Text, View, safeAreaInsets, signal, fontScale, screenReaderEnabled, announce } from "nsh";
 import { Button, Input } from "nsh/base";
 import { Photos } from "contactsheet/native";
 
@@ -29,7 +29,8 @@ export function MobileApp() {
   const note = signal("");
   const album = () => library().albums.find(a => a.id === albumId()) ?? library().albums[0];
   const ids = () => album()?.photoIds ?? [];
-  const photo = (id: string) => library().photos.find(p => p.id === id);
+  const photoMap = computed(() => new Map(library().photos.map(item => [item.id, item])));
+  const photo = (id: string) => photoMap().get(id);
   const current = () => photo(photoId());
   const stack = () => {
     const albums = library().albums;
@@ -122,7 +123,7 @@ export function MobileApp() {
             </Button>}</Each>
           </View>
           <Text class="text-2xl font-bold dark:text-white">{album()?.name ?? ""}</Text>
-          <Text class="text-neutral-500">{ids().length} 张照片</Text>
+          <Text class="text-neutral-500">{albumCount(ids(), photo)}</Text>
           <View class="flex-row gap-2">
             <Action label="上一本" run={() => stepAlbum(-1)} disabled={album()?.id === library().albums[0]?.id} />
             <Action label="打开" run={() => { albumId.set(album()?.id ?? ""); page.set("album"); }} />
@@ -131,10 +132,10 @@ export function MobileApp() {
         </View>}>
           <Scroll testID="mobile-album-list" class="flex-1"><View class="gap-2">
             <Each of={library().albums} key={item => item.id}>{item => <Button
-              accessibilityLabel={`${item().name}，${item().photoIds.length} 张照片`} onPress={() => openAlbum(item().id)}
+              accessibilityLabel={`${item().name}，${albumCount(item().photoIds, photo)}`} onPress={() => openAlbum(item().id)}
               class="min-h-11 flex-row items-center gap-3 py-2">
               <If when={!!item().coverId}><Image src={photo(item().coverId ?? "")?.url ?? ""} style={{width:56, height:56, objectFit:"cover",borderRadius:6}} /></If>
-              <View class="flex-1"><Text class="text-lg dark:text-white">{item().name}</Text><Text class="text-neutral-500">{item().photoIds.length} 张照片</Text></View>
+              <View class="flex-1"><Text class="text-lg dark:text-white">{item().name}</Text><Text class="text-neutral-500">{albumCount(item().photoIds, photo)}</Text></View>
             </Button>}</Each>
           </View></Scroll>
         </If>
@@ -151,7 +152,7 @@ export function MobileApp() {
         </View>
         <If when={importNotice()}><Text testID="mobile-import-result" class="text-neutral-600 dark:text-neutral-200">{importNotice()}</Text></If>
         <View class="flex-row flex-wrap gap-1">
-          <Each of={ids()} key={id => id}>{id => <Button testID={`mobile-photo-${ids().indexOf(id()) + 1}`} accessibilityLabel={photo(id())?.title || `照片 ${ids().indexOf(id()) + 1}`} style={{width:landscape() ? "19%" : "32%",aspectRatio:1}} onPress={() => {photoId.set(id());page.set("reader");}}>
+          <Each of={ids()} key={id => id}>{id => <Button testID={`mobile-photo-${ids().indexOf(id()) + 1}`} accessibilityLabel={itemLabel(photo(id()), `${mediaName(photo(id()))} ${ids().indexOf(id()) + 1}`)} style={{width:landscape() ? "19%" : "32%",aspectRatio:1}} onPress={() => {photoId.set(id());page.set("reader");}}>
             <Image src={photo(id())?.url ?? ""} style={{width:"100%",height:"100%",objectFit:"cover"}} />
             <MediaBadge photo={photo(id())} />
           </Button>}</Each>
@@ -165,14 +166,14 @@ export function MobileApp() {
           <MotionMedia photo={current()} />
         </View>
         <Scroll style={{maxHeight:landscape() ? "100%" : "46%", ...(landscape() ? {width:"40%"} : {})}}><View class="gap-2">
-        <Text class="text-xl dark:text-white">{current()?.title || `照片 ${ids().indexOf(photoId())+1} / ${ids().length}`}</Text>
+        <Text class="text-xl dark:text-white">{current()?.title || `${mediaName(current())} ${ids().indexOf(photoId())+1} / ${ids().length}`}</Text>
         <Text class="dark:text-white">{current()?.description ?? ""}</Text>
         <View class="flex-row flex-wrap gap-2">
           <Action label="上一张" run={() => stepPhoto(-1)} disabled={photoId() === ids()[0]} />
           <Action label="下一张" run={() => stepPhoto(1)} disabled={photoId() === ids()[ids().length - 1]} />
           <Action label="编辑旁注" run={beginEdit} />
           <Action label={album()?.coverId === photoId() ? "当前封面" : "设为封面"} run={() => void perform(() => Photos.setCover(albumId(),photoId()))} />
-          <Action label="移除照片" run={() => page.set("remove")} />
+          <Action label={`移除${mediaName(current())}`} run={() => page.set("remove")} />
         </View></View></Scroll>
       </View>
     </If>
@@ -180,13 +181,13 @@ export function MobileApp() {
       <Scroll class="flex-1"><View class="gap-4"><Text class="text-xl dark:text-white">相册名称</Text>
         <Input testID="mobile-name" accessibilityLabel="相册名称" class="min-h-11 rounded-lg border border-neutral-400 px-3 dark:text-white" value={name()} onChange={e => name.set(e.value)} placeholder="相册名称" />
         <If when={page() === "create"}><Action label="创建空相册" disabled={busy() || !name().trim()} run={() => void perform(() => openAlbum(Photos.createAlbum(name().trim())))} /></If>
-        <Action label={page() === "create" ? "创建并选择照片" : "保存名称"} run={() => void perform(saveName)} disabled={busy() || !name().trim()} />
+        <Action label={page() === "create" ? "创建并选择照片或视频" : "保存名称"} run={() => void perform(saveName)} disabled={busy() || !name().trim()} />
       </View></Scroll>
     </If>
     <If when={page() === "note"}>
       <Scroll class="flex-1"><View class="gap-4">
-        <Input testID="mobile-note-title" accessibilityLabel="照片标题" placeholder="标题" value={title()} onChange={e => title.set(e.value)} />
-        <Input testID="mobile-note-body" accessibilityLabel="照片旁注" multiline placeholder="旁注" value={note()} onChange={e => note.set(e.value)} style={{minHeight:120}} />
+        <Input testID="mobile-note-title" accessibilityLabel={`${mediaName(current())}标题`} placeholder="标题" value={title()} onChange={e => title.set(e.value)} />
+        <Input testID="mobile-note-body" accessibilityLabel={`${mediaName(current())}旁注`} multiline placeholder="旁注" value={note()} onChange={e => note.set(e.value)} style={{minHeight:120}} />
         <Action label="保存旁注" run={() => void perform(() => {
           Photos.saveAnnotation(photoId(),title(),note(),current()?.date ?? "",current()?.location ?? "");page.set("reader");
         })} />
@@ -194,7 +195,7 @@ export function MobileApp() {
     </If>
     <If when={page() === "remove" || page() === "delete"}>
       <Scroll class="flex-1"><View class="gap-3">
-        <Text class="text-lg dark:text-white">{page() === "remove" ? "从相册移除这张照片？" : "删除这本相册？"}</Text>
+        <Text class="text-lg dark:text-white">{page() === "remove" ? `从相册移除${thisItem(current())}？` : "删除这本相册？"}</Text>
         <Action label="取消" run={back} />
         <Action label="确认" run={() => void perform(() => {
           if (page() === "remove") {Photos.removePhoto(albumId(),photoId());page.set("album");}

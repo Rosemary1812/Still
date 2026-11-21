@@ -1,3 +1,4 @@
+import { albumCount } from "./MediaLabels";
 import { computed, signal } from "nsh";
 import { Photos } from "contactsheet/native";
 
@@ -18,6 +19,7 @@ export function makeLibrary() {
   const busy = signal(false);
   const album = computed(() => library().albums.find(a => a.id === albumID()));
   const photoMap = computed(() => new Map(library().photos.map(p => [p.id, p])));
+  const count = (a?: Album) => albumCount(a?.photoIds ?? [], id => photoMap().get(id));
   const photos = computed(() => (album()?.photoIds ?? []).flatMap(id => { const p = photoMap().get(id); return p ? [p] : []; }));
   const index = computed(() => photos().findIndex(p => p.id === photoID()));
   const photo = computed(() => photoMap().get(photoID()));
@@ -31,6 +33,6 @@ export function makeLibrary() {
   function step(delta: number) { const target = photos()[index() + delta]; if (target) photoID.set(target.id); }
   function control(fn: () => void) { command(() => { fn(); player.set(Photos.snapshot()); }); }
   function cover(a: Album) { return photoMap().get(a.coverId ?? a.photoIds[0] ?? ""); }
-  return { library, player, albumID, photoID, reading, panel, error, busy, album, photos, photo, index, cover, refresh, command, mutate, changeView, openAlbum, home, select, step, control };
+  return { library, player, count, albumID, photoID, reading, panel, error, busy, album, photos, photo, index, cover, refresh, command, mutate, changeView, openAlbum, home, select, step, control };
 }
 export type Library = ReturnType<typeof makeLibrary>;

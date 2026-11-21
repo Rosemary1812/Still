@@ -1,3 +1,4 @@
+import { mediaName } from "./MediaLabels";
 import { MediaBadge } from "./MotionMedia";
 import { cleanup, computed, createAnimatedValue, effect, Image, keymap, platform, reduceMotion, Scroll, signal, Text, untracked, View, type MouseEvent, type TransformStep, type ViewRef, type ViewStyle } from "nsh";
 import { Menu } from "nsh/desktop";
@@ -14,7 +15,7 @@ type Stage = { entering: () => boolean; ready: () => boolean; held: () => string
 export function Artwork(p: { photo?: Photo; fit?: "contain" | "cover"; light?: boolean }) {
   const failed = signal("");
   return <View style={{ width: "100%", height: "100%", alignItems: "center", justifyContent: "center", overflow: "hidden", backgroundColor: p.light ? "#e6e2da" : "#343332" }}>
-    <If when={p.photo?.url && p.photo.url !== failed()} else={<Text style={{ color: p.light ? muted : "#c6c2bb", fontSize: 12 }}>{p.photo ? "照片不可用" : "Still"}</Text>}><Image src={p.photo?.url ?? ""} style={{ width: "100%", height: "100%", objectFit: p.fit ?? "cover" }} onError={() => failed.set(p.photo?.url ?? "")} /></If>
+    <If when={p.photo?.url && p.photo.url !== failed()} else={<Text style={{ color: p.light ? muted : "#c6c2bb", fontSize: 12 }}>{p.photo ? (p.photo.kind === "video" ? "视频封面不可用" : `${mediaName(p.photo)}不可用`) : "Still"}</Text>}><Image src={p.photo?.url ?? ""} style={{ width: "100%", height: "100%", objectFit: p.fit ?? "cover" }} onError={() => failed.set(p.photo?.url ?? "")} /></If>
     <MediaBadge photo={p.photo} />
   </View>;
 }
@@ -102,7 +103,7 @@ function Cover(p: { app: Library; album: Album; index: number; side: number; awa
       <View style={{ position: "absolute", top: "100%", left: 0, right: 0, height: 7, overflow: "hidden", opacity: up() ? 0 : 0.2, transitionProperty: "opacity", transitionDuration: up() ? liftMs * 0.45 : dropMs }}>
         <View style={{ width: "100%", height: p.side, scale: [1, -1] }}><Artwork photo={p.app.cover(p.album)} /></View>
       </View>
-      <Button testID={`album-${p.album.id}`} accessibilityLabel={`${p.album.name}，${p.album.photoIds.length} 张照片，查看相册详情`} onPress={inspect}
+      <Button testID={`album-${p.album.id}`} accessibilityLabel={`${p.album.name}，${p.app.count(p.album)}，查看相册详情`} onPress={inspect}
         style={{ width: "100%", height: "100%", boxShadow: up() ? "2px 20px 15px rgba(0,0,0,0.16)" : "2px 6px 5px rgba(0,0,0,0.26)", transitionProperty: "box-shadow", transitionDuration: up() ? liftMs : dropMs }}
         focusVisibleStyle={{ borderColor: "#81aff0", borderWidth: 2 }}>
         <Sleeve app={p.app} album={p.album} side={p.side} plain={over()} />
@@ -160,7 +161,7 @@ function Spine(p: { app: Library; album: Album; stage: Stage }) {
   }
   const hidden = () => p.stage.held() === p.album.id;
   return <View ref={r => { frame = r; }} onMouseEnter={() => over.set(true)} onMouseLeave={() => over.set(false)} onContextMenu={e => albumMenu(p.app, p.album, inspect, e.pagePosition)} style={{ zIndex: up() ? 1 : 0, opacity: hidden() ? 0 : 1 }}>
-    <Button testID={`album-${p.album.id}`} accessibilityLabel={`${p.album.name}，${p.album.photoIds.length} 张照片，查看相册详情`} tooltip={<Hint label={p.album.name} />} onPress={inspect}
+    <Button testID={`album-${p.album.id}`} accessibilityLabel={`${p.album.name}，${p.app.count(p.album)}，查看相册详情`} tooltip={<Hint label={p.album.name} />} onPress={inspect}
       style={{ width: 33, height: 301, padding: 2, gap: 1, borderRadius: 3, borderWidth: 1, borderColor: "#20211e", backgroundColor: "#52534e", translate: [0, lift],
         boxShadow: up() ? "3px 10px 16px rgba(0,0,0,0.25)" : "1px 2px 2px rgba(0,0,0,0.10)", transitionProperty: "box-shadow", transitionDuration: 350, transitionTimingFunction: "ease-out" }}
       focusVisibleStyle={{ borderColor: "#81aff0", borderWidth: 2 }}>
@@ -218,7 +219,7 @@ function Detail(p: { app: Library; flight: Flight; width: number; height: number
     <View testID="detail-backdrop" accessibilityLabel="放回相册" onPress={dismiss} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: veil, backdropFilter: "blur(7px)", maskImage: "linear-gradient(#000, #000)", backgroundColor: "rgba(226,226,225,0.3)" }} />
     <View style={{ position: "absolute", left: 34, top: 0, bottom: 36, width: Math.max(120, left() - 60), justifyContent: "center", gap: 10, opacity: words, pointerEvents: "none" }}>
       <Text style={{ color: ink, fontSize: p.width < 900 ? 24 : 30, fontFamily: "Georgia", numberOfLines: 3 }}>{f.album.name}</Text>
-      <Text style={{ color: muted, fontSize: 13 }}>{`${f.album.photoIds.length} 张照片`}</Text>
+      <Text style={{ color: muted, fontSize: 13 }}>{p.app.count(f.album)}</Text>
     </View>
     {/* Clipping flattens the turning sleeve into this layer: left in the backdrop's space, its far half sinks behind the blur. */}
     <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, overflow: "hidden", pointerEvents: "box-none" }}>

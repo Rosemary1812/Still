@@ -1,3 +1,4 @@
+import { itemLabel, mediaName, thisItem } from "./MediaLabels";
 import { currentWindow } from "nsh/desktop";
 import { MotionMedia } from "./MotionMedia";
 import { cleanup, computed, effect, Image, keymap, Scroll, signal, Text, untracked, View, type InputRef, type InputStyle, type ScrollRef, type Signal } from "nsh";
@@ -77,7 +78,7 @@ function Notes(p: { app: Library; fail: (message: string) => void; cover: (photo
         style={{ ...field, flex: 1, height: 28, fontSize: 12.5, color: onPhotoMuted }} hoverStyle={fieldHover} focusStyle={fieldFocus} />
     </View>
     <View style={{ height: 0.5, backgroundColor: "rgba(255,255,255,0.16)" }} />
-    <Input testID="reader-story" accessibilityLabel="旁注" placeholder="写下这张照片的故事…" multiline value={description()} onChange={e => edit(description, e.value)} ref={r => (storyInput = r)} {...bind(() => storyInput)}
+    <Input testID="reader-story" accessibilityLabel="旁注" placeholder={`写下${thisItem(p.app.photo())}的故事…`} multiline value={description()} onChange={e => edit(description, e.value)} ref={r => (storyInput = r)} {...bind(() => storyInput)}
       style={{ ...field, flex: 1, minHeight: 60, paddingVertical: 6, fontSize: 14.5, lineHeight: 23 }} hoverStyle={fieldHover} focusStyle={fieldFocus} />
     <View style={{ flexDirection: "row", gap: 8 }}>
       <Quiet id="photo-cover" label={isCover() ? "相册封面" : "设为封面"} disabled={isCover()} onPress={() => { const photo = p.app.photo(); if (photo) p.cover(photo); }} />
@@ -120,7 +121,7 @@ export function Reader(p: { app: Library; width: number; fail: (message: string)
         <View onContextMenu={e => { const photo = p.app.photo(); if (photo) p.menu(photo, e.pagePosition); }}
           style={{ width: print().width, height: print().height, borderRadius: 5, overflow: "hidden", backgroundColor: "rgba(0,0,0,0.25)", boxShadow: "0 22px 60px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.35)" }}>
           <If when={p.app.photo()?.url} else={<Artwork photo={p.app.photo()} />}>
-            <Image src={p.app.photo()?.url ?? ""} accessibilityLabel={p.app.photo()?.title || `照片 ${p.app.index() + 1}`} fadeDuration={200} style={{ width: "100%", height: "100%", objectFit: "contain" }}
+            <Image src={p.app.photo()?.url ?? ""} accessibilityLabel={itemLabel(p.app.photo(), `${mediaName(p.app.photo())} ${p.app.index() + 1}`)} fadeDuration={200} style={{ width: "100%", height: "100%", objectFit: "contain" }}
               onLoad={e => { const id = p.app.photoID(); if (e.size.height > 0 && shapes().get(id) !== e.size.width / e.size.height) shapes.set(new Map(shapes()).set(id, e.size.width / e.size.height)); }} />
           </If>
           <If when={window.state()?.visible !== false}><MotionMedia photo={p.app.photo()} /></If>
@@ -134,7 +135,7 @@ export function Reader(p: { app: Library; width: number; fail: (message: string)
     </View>
     <Scroll horizontal ref={r => (strip = r)} scrollbar={false} style={{ height: 70, flexGrow: 0 }} contentStyle={{ flexDirection: "row", alignItems: "center", gap: thumbGap, paddingHorizontal: stripInset(), paddingBottom: 6 }}>
       <Each of={p.app.photos()}>{item => <View onContextMenu={e => p.menu(item(), e.pagePosition)}>
-        <Button accessibilityLabel={item().title || "查看这张照片"} selected={item().id === p.app.photoID()} onPress={() => p.app.select(item().id)}
+        <Button accessibilityLabel={itemLabel(item(), `查看${thisItem(item())}`)} selected={item().id === p.app.photoID()} onPress={() => p.app.select(item().id)}
           style={{ ...fade, width: thumb, height: thumb, borderRadius: 7, overflow: "hidden", borderWidth: 2, borderColor: item().id === p.app.photoID() ? onPhoto : "transparent", opacity: item().id === p.app.photoID() ? 1 : 0.5 }}
           hoverStyle={{ opacity: 1 }} focusVisibleStyle={{ borderColor: "#9cc4fb", opacity: 1 }}>
           <Artwork photo={item()} />
