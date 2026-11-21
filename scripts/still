@@ -17,8 +17,9 @@ if [[ "$(uname)" == Darwin ]]; then
   export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 fi
 git -C "$root" submodule update --init toolchain/nsh
-(cd "$root/toolchain/nsh" && cargo build --locked -p nsh-cli)
-cli="$root/toolchain/nsh/target/debug/nsh"
+nsh_target="$root/toolchain/nsh/target"
+(cd "$root/toolchain/nsh" && cargo build --locked -p nsh-cli --target-dir "$nsh_target")
+cli="$nsh_target/debug/nsh"
 case "$action" in
   run)
     if [[ "$platform" == macos && -z "${STILL_LIBRARY_DIR:-}" && ! -e "$HOME/Library/Application Support/StillNSH" && -f "$HOME/Library/Containers/local.contact-sheet.app/Data/Library/Application Support/default.store" ]]; then

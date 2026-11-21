@@ -6,12 +6,13 @@ if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) {
 }
 git submodule update --init -- ../toolchain/nsh
 if ($LASTEXITCODE -ne 0) { throw 'Could not initialize the pinned NSH source' }
+$nshTarget = Join-Path (Get-Location) '../toolchain/nsh/target'
 Push-Location ../toolchain/nsh
 try {
-    cargo build --locked -p nsh-cli
+    cargo build --locked -p nsh-cli --target-dir $nshTarget
     if ($LASTEXITCODE -ne 0) { throw 'Could not build NSH' }
 } finally { Pop-Location }
-$nsh = Join-Path (Get-Location) '../toolchain/nsh/target/debug/nsh.exe'
+$nsh = Join-Path $nshTarget 'debug/nsh.exe'
 if ($Action -eq 'check') { & $nsh check App.tsx }
 elseif ($Action -eq 'test') {
     $oldLibrary = $env:STILL_LIBRARY_DIR
