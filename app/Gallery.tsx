@@ -256,7 +256,7 @@ export function Gallery(p: { app: Library }) {
         <Text style={{ marginLeft: platform.os === "macos" ? 70 : 8, fontSize: 19, fontWeight: "700", fontFamily: "Georgia", color: ink }}>Still</Text>
       </View>
       <Switcher app={p.app} prefix="home" />
-      <View style={{ ...row, flex: 1, justifyContent: "flex-end", pointerEvents: "box-none" }}><GlassButton darkInk icon="settings" id="home-settings" label="设置" onPress={() => p.app.panel.set("settings")} /><GlassButton darkInk icon="plus" id="home-add" label="添加相册" onPress={() => p.app.panel.set("create")} /></View>
+      <View style={{ ...row, flex: 1, justifyContent: "flex-end", pointerEvents: "box-none" }}><GlassButton darkInk icon="plus" id="home-add" label="添加相册" onPress={() => p.app.panel.set("create")} /></View>
     </View>
     <If when={flight()}><Detail app={p.app} flight={flight()!} width={size().width} height={size().height} origin={origin()} close={() => flight.set(undefined)} /></If>
   </View>;

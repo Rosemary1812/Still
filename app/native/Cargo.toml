@@ -7,7 +7,7 @@ publish = false
 [workspace]
 
 [dependencies]
-nsh-core = "=0.5.0"
+nsh-core = { path = "../../toolchain/nsh/crates/nsh-core" }
 rusqlite = { version = "0.37", features = ["bundled"] }
 fastrand = "2"
 sha2 = "0.10"

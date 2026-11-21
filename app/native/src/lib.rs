@@ -6,11 +6,13 @@ mod player;
 mod store;
 
 use nsh_core::{
+    ImageData,
     picker::{PickRequest, PickedFile},
     prelude::*,
 };
 use player::Player;
 use std::{
+    path::PathBuf,
     sync::{Mutex, OnceLock},
     time::{Duration, Instant},
 };
@@ -47,23 +49,125 @@ pub struct Snapshot {
     pub shuffle: bool,
 }
 
-async fn import_picked(id: String, picked: Vec<PickedFile>) -> Result<(), String> {
+/// What an import did: photos new to the album, photos it already held, and files Still could not read.
+#[derive(Clone, Default, JsObject)]
+pub struct Imported {
+    pub added: u32,
+    pub existing: u32,
+    pub skipped: u32,
+}
+
+async fn import_picked(id: String, picked: Vec<PickedFile>) -> Result<Imported, String> {
     if picked.is_empty() {
-        return Ok(());
+        return Ok(Imported::default());
     }
     blocking(move || {
-        let paths = with_store(|s| {
-            s.import(&id, picked)?;
-            s.playlist(&id)
+        // One unreadable file must not cost the user the rest of the selection.
+        let offered = picked.len();
+        let readable: Vec<PickedFile> = picked
+            .into_iter()
+            .filter(|file| store::image_extension(file.data.bytes()).is_some())
+            .collect();
+        let skipped = (offered - readable.len()) as u32;
+        let readable_count = readable.len();
+        let (before, paths) = with_store(|s| {
+            let before = s.playlist(&id)?.len();
+            if !readable.is_empty() {
+                s.import(&id, readable)?;
+            }
+            Ok((before, s.playlist(&id)?))
         })?;
+        let added = (paths.len() - before) as u32;
         let mut p = player().lock().unwrap();
         if p.album.as_ref() == Some(&id) {
             p.update(paths);
         }
-        Ok(())
+        Ok(Imported {
+            added,
+            existing: (readable_count as u32).saturating_sub(added),
+            skipped,
+        })
     })
     .await
     .map_err(|e| e.to_string())?
+}
+
+// What a dropped folder is searched for: the formats Still shows, and those macOS converts for it.
+const IMAGE_EXTENSIONS: [&str; 22] = [
+    "jpg", "jpeg", "jpe", "png", "gif", "webp", "heic", "heif", "avif", "tif", "tiff", "bmp",
+    "dng", "cr2", "cr3", "nef", "arw", "raf", "orf", "rw2", "pef", "srw",
+];
+
+fn dropped_path(uri: &str) -> PathBuf {
+    // `file:///Users/a%20b.jpg`, as the desktops report dropped files.
+    let raw = match uri.strip_prefix("file:") {
+        Some(rest) => rest.strip_prefix("//").unwrap_or(rest),
+        None => uri,
+    };
+    let bytes = raw.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        let hex = (bytes[i] == b'%')
+            .then(|| raw.get(i + 1..i + 3))
+            .flatten()
+            .and_then(|pair| u8::from_str_radix(pair, 16).ok());
+        match hex {
+            Some(byte) => {
+                out.push(byte);
+                i += 3;
+            }
+            None => {
+                out.push(bytes[i]);
+                i += 1;
+            }
+        }
+    }
+    PathBuf::from(local_path(&String::from_utf8_lossy(&out), cfg!(windows)))
+}
+
+/// A `file:` URL's path as the system writes it: Windows drops the slash before the drive (`/C:/a` is `C:/a`).
+fn local_path(path: &str, windows: bool) -> &str {
+    let drive = path.as_bytes();
+    let on_drive =
+        drive.len() > 2 && drive[0] == b'/' && drive[1].is_ascii_alphabetic() && drive[2] == b':';
+    if windows && on_drive {
+        &path[1..]
+    } else {
+        path
+    }
+}
+
+/// Dropped files as they are, and the images inside dropped folders, in name order.
+fn dropped_files(path: PathBuf, depth: u8, out: &mut Vec<PathBuf>) {
+    if !path.is_dir() {
+        out.push(path);
+        return;
+    }
+    let Ok(entries) = std::fs::read_dir(&path) else {
+        return;
+    };
+    let mut children: Vec<PathBuf> = entries.flatten().map(|entry| entry.path()).collect();
+    children.sort();
+    for child in children {
+        let hidden = child
+            .file_name()
+            .is_some_and(|name| name.to_string_lossy().starts_with('.'));
+        if hidden {
+            continue;
+        }
+        if child.is_dir() {
+            if depth > 0 {
+                dropped_files(child, depth - 1, out);
+            }
+        } else if child
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .is_some_and(|ext| IMAGE_EXTENSIONS.contains(&ext.to_ascii_lowercase().as_str()))
+        {
+            out.push(child);
+        }
+    }
 }
 
 #[module]
@@ -122,11 +226,51 @@ impl Photos {
             .await
             .map_err(|e| e.to_string())?
     }
-    pub async fn add_files(id: String) -> Result<(), String> {
+    pub async fn add_files(id: String) -> Result<Imported, String> {
         let files = pick_images(PickRequest::new(true, 0)).await;
         import_picked(id, files).await
     }
-    pub async fn add_apple_photos(id: String) -> Result<(), String> {
+    /// Imports files and folders dropped on the album, given as `file:` URLs.
+    pub async fn add_dropped(id: String, uris: Vec<String>) -> Result<Imported, String> {
+        let paths = blocking(move || {
+            let mut paths = Vec::new();
+            for uri in &uris {
+                dropped_files(dropped_path(uri), 4, &mut paths);
+            }
+            paths
+        })
+        .await
+        .map_err(|e| e.to_string())?;
+        let mut total = Imported::default();
+        // A folder can hold more than fits in memory at once: read and commit it in runs.
+        for run in paths.chunks(24) {
+            let run = run.to_vec();
+            let offered = run.len();
+            let files = blocking(move || {
+                run.iter()
+                    .filter_map(|path| {
+                        let name = path.file_name()?.to_string_lossy().into_owned();
+                        let data = std::fs::read(path).ok()?;
+                        #[cfg(target_os = "macos")]
+                        let data = match store::image_extension(&data) {
+                            Some(_) => data,
+                            None => macos::export_jpeg(path).unwrap_or(data),
+                        };
+                        Some(PickedFile::new(name, "", ImageData::new(data)))
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .await
+            .map_err(|e| e.to_string())?;
+            total.skipped += (offered - files.len()) as u32;
+            let imported = import_picked(id.clone(), files).await?;
+            total.added += imported.added;
+            total.existing += imported.existing;
+            total.skipped += imported.skipped;
+        }
+        Ok(total)
+    }
+    pub async fn add_apple_photos(id: String) -> Result<Imported, String> {
         #[cfg(target_os = "ios")]
         {
             Self::add_files(id).await
@@ -135,7 +279,7 @@ impl Photos {
         {
             let selected = macos::pick().await?;
             if selected.is_empty() {
-                return Ok(());
+                return Ok(Imported::default());
             }
             let files = blocking(move || macos::read_exports(selected))
                 .await
@@ -185,4 +329,50 @@ impl Photos {
 #[native_module("contactsheet/native")]
 fn native(registry: &mut Registry) {
     registry.module::<Photos>();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn dropped_urls_become_paths_and_folders_give_their_images() {
+        #[cfg(not(windows))]
+        assert_eq!(
+            dropped_path("file:///Users/a%20b/%E6%B9%96.jpg"),
+            PathBuf::from("/Users/a b/湖.jpg")
+        );
+        assert_eq!(
+            local_path("/C:/Users/a b/湖.jpg", true),
+            "C:/Users/a b/湖.jpg"
+        );
+        assert_eq!(local_path("/Users/a", true), "/Users/a");
+        assert_eq!(local_path("/C:/a", false), "/C:/a");
+        let root = tempfile::tempdir().unwrap();
+        std::fs::create_dir(root.path().join("trip")).unwrap();
+        for name in [
+            "b.PNG",
+            "a.jpg",
+            "notes.txt",
+            ".hidden.jpg",
+            "trip/c.heic",
+            "trip/d.dng",
+        ] {
+            std::fs::write(root.path().join(name), b"").unwrap();
+        }
+        let mut found = Vec::new();
+        dropped_files(root.path().to_path_buf(), 4, &mut found);
+        let names: Vec<_> = found
+            .iter()
+            .map(|path| {
+                let inside = path.strip_prefix(root.path()).unwrap();
+                inside.to_string_lossy().replace('\\', "/")
+            })
+            .collect();
+        assert_eq!(names, ["a.jpg", "b.PNG", "trip/c.heic", "trip/d.dng"]);
+        // A file dropped by itself is offered as it is; the importer decides whether it is an image.
+        let mut single = Vec::new();
+        dropped_files(root.path().join("notes.txt"), 4, &mut single);
+        assert_eq!(single.len(), 1);
+    }
 }

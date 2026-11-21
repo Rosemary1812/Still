@@ -35,6 +35,21 @@ pub struct Library {
     pub view_mode: String,
 }
 
+/// The managed copy's extension, or `None` for bytes Still cannot show on every client.
+pub fn image_extension(bytes: &[u8]) -> Option<&'static str> {
+    imagesize::blob_size(bytes).ok()?;
+    if bytes.starts_with(b"\xff\xd8\xff") {
+        Some("jpg")
+    } else if bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
+        Some("png")
+    } else if bytes.starts_with(b"GIF87a") || bytes.starts_with(b"GIF89a") {
+        Some("gif")
+    } else if bytes.starts_with(b"RIFF") && bytes.get(8..12) == Some(b"WEBP") {
+        Some("webp")
+    } else {
+        None
+    }
+}
 pub fn library_root() -> Result<PathBuf> {
     if let Some(path) = env::var_os("STILL_LIBRARY_DIR").filter(|v| !v.is_empty()) {
         return Ok(std::path::absolute(path)?);
@@ -222,18 +237,7 @@ impl Store {
             .into_iter()
             .map(|file| {
                 let bytes = file.data.bytes();
-                if imagesize::blob_size(bytes).is_err() {
-                    return Err(format!("无法读取图片：{}", file.name).into());
-                }
-                let ext = if bytes.starts_with(b"\xff\xd8\xff") {
-                    "jpg"
-                } else if bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
-                    "png"
-                } else if bytes.starts_with(b"GIF87a") || bytes.starts_with(b"GIF89a") {
-                    "gif"
-                } else if bytes.starts_with(b"RIFF") && bytes.get(8..12) == Some(b"WEBP") {
-                    "webp"
-                } else {
+                let Some(ext) = image_extension(bytes) else {
                     return Err(format!("无法读取图片：{}", file.name).into());
                 };
                 Ok((format!("{:x}", Sha256::digest(bytes)), ext, file))

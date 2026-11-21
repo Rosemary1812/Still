@@ -11,8 +11,10 @@ deleteAlbum(id:string):void
 setCover(id:string,photoId:string):void
 removePhoto(id:string,photoId:string):void
 saveAnnotation(photoId:string,title:string,description:string,date:string,location:string):void
-addFiles(id:string):Promise<void>
-addApplePhotos(id:string):Promise<void>
+addFiles(id:string):Promise<Imported>
+addApplePhotos(id:string):Promise<Imported>
+addDropped(id:string,uris:string[]):Promise<Imported> // dropped file: URLs; folders are searched for images; macOS converts HEIC, TIFF and RAW to JPEG
+// Imported = {added:number, existing:number, skipped:number}: new to the album, already in it, unreadable. Unreadable files never abort an import.
 setViewMode(mode:string):void // cabinet or wall
 playAlbum(id:string):void // start album, 60 seconds between photos
 snapshot():{paths:string[],current:string|null,playing:boolean,revision:number,shuffle:boolean}

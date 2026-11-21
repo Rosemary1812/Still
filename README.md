@@ -1,10 +1,10 @@
 # Still
 
-Still 是一款本地相册应用。macOS、Windows 和 iPhone 客户端使用 NSH 0.5.0。界面用 TSX 编写，相册、照片副本、旁注和播放状态由 Rust 管理。相册保存在当前设备。
+Still 是一款本地相册应用。macOS、Windows 和 iPhone 客户端使用 NSH 源码提交 `4a114852`。界面用 TSX 编写，相册、照片副本、旁注和播放状态由 Rust 管理。相册保存在当前设备。
 
 ## 开发
 
-安装 NSH 0.5.0 和 Rust stable。Apple 平台需要完整的 Xcode；给 iPhone 模拟器或真机打包时，先用 rustup 安装对应的 Rust target（Apple Silicon 模拟器为 aarch64-apple-ios-sim，真机为 aarch64-apple-ios）。工作区已有 .tools 工具链时，启动脚本会自动选用它。
+安装 Rust stable。NSH 通过 `toolchain/nsh` 子模块固定到提交 `4a114852947a3ed486ad90b9d2dd22a0487a15f7`，启动脚本会初始化子模块并构建 CLI，应用原生依赖与 CLI 使用同一份源码。这个尚未发布的提交通过了 macOS 编辑后 Escape 与方向键回归测试；正式版 0.6.1 尚未通过该测试。Apple 平台需要完整的 Xcode；给 iPhone 模拟器或真机打包时，先用 rustup 安装对应的 Rust target（Apple Silicon 模拟器为 aarch64-apple-ios-sim，真机为 aarch64-apple-ios）。工作区已有 .tools 工具链时，启动脚本会自动选用它。
 
 ```sh
 scripts/still run macos
@@ -30,5 +30,6 @@ python3 scripts/migrate-swiftdata.py --destination "$HOME/Library/Application Su
 ## 代码
 
 - `app/App.tsx` 选择桌面或 iPhone 界面。桌面主页有唱片柜与相册墙、相册导入、照片阅读和独立放映窗口。
+- `app/Reading.tsx` 是桌面端打开相册后的页面：`PhotoWall.tsx` 是流动照片墙，`Reader.tsx` 是翻阅页（照片与旁注并排，旁注就地编辑并自动保存）。相册内的操作不使用应用自绘弹窗：添加照片和相册操作用系统菜单，照片与文件夹可直接拖入窗口，删除和移除用系统确认框，结果提示显示在页面底部。
 - `app/native/` 包含 SQLite 数据模型、媒体导入、播放器与 macOS 系统照片选择器桥接。
 - `scripts/still` 是 Mac 与 iPhone 的开发入口。Windows 验证流程位于 `.github/workflows/windows.yml`。
