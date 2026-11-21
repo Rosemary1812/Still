@@ -257,10 +257,18 @@ impl Publication<'_> {
         recovery::record(self.journal, destination)?;
         if fs::hard_link(&staged, &target).is_err() {
             // Filesystems without hard links still publish an atomic, durable copy.
-            let mut copy = NamedTempFile::new_in(parent)?;
-            io::copy(&mut File::open(staged)?, copy.as_file_mut())?;
-            copy.as_file().sync_all()?;
-            copy.persist_noclobber(&target)?;
+            let scratch =
+                Path::new(destination).with_file_name(format!(".import-{}.part", Uuid::new_v4()));
+            let scratch = scratch.to_str().ok_or("无效的媒体路径")?;
+            recovery::record(self.journal, scratch)?;
+            let scratch_path = self.root.join(scratch);
+            let mut copy = File::create_new(&scratch_path)?;
+            self.created.push(scratch.to_owned());
+            let scratch_file = tempfile::TempPath::try_from_path(scratch_path)?;
+            io::copy(&mut File::open(staged)?, &mut copy)?;
+            copy.sync_all()?;
+            drop(copy);
+            scratch_file.persist_noclobber(&target)?;
         }
         self.created.push(destination.to_owned());
         #[cfg(unix)]
@@ -450,7 +458,12 @@ mod tests {
         assert_ne!(rows[0].url, rows[2].url);
         for p in &rows[..2] {
             assert_eq!(fs::read(&p.url).unwrap(), STILL);
-            assert_eq!(fs::read(p.video_url.as_ref().unwrap()).unwrap(), MOVIE);
+            let source = p.video_url.as_ref().unwrap();
+            #[cfg(target_os = "ios")]
+            let path = url::Url::parse(source).unwrap().to_file_path().unwrap();
+            #[cfg(not(target_os = "ios"))]
+            let path = PathBuf::from(source);
+            assert_eq!(fs::read(path).unwrap(), MOVIE);
             assert!(p.duration.unwrap() > 0.0);
         }
         let original: String = store

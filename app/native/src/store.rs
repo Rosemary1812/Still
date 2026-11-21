@@ -42,6 +42,7 @@ pub struct Library {
 }
 
 /// The managed copy's extension, or `None` for bytes Still cannot show on every client.
+#[cfg(windows)]
 pub fn image_extension(bytes: &[u8]) -> Option<&'static str> {
     imagesize::blob_size(bytes).ok()?;
     if bytes.starts_with(b"\xff\xd8\xff") {
