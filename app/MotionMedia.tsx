@@ -1,5 +1,4 @@
 import { effect, signal, Text, Video, View, type ViewStyle } from "nsh";
-import { Button } from "nsh/base";
 import type { Photo } from "./DesktopState";
 
 const frame: ViewStyle = { position: "absolute", top: 0, bottom: 0, left: 0, right: 0 };
@@ -62,12 +61,12 @@ function MotionItem(p: { photo: Photo; slide?: Slide }) {
       controls={!p.slide && !live()} style={{ ...frame, width: "100%", height: "100%", objectFit: "contain", backgroundColor: "#151515" }}
       onEnd={() => end(false)} onError={() => end(true)} /></If>
     <If when={!p.slide && (live() || !started()) && p.photo.videoUrl}>
-      <Button testID="media-play" accessibilityLabel={live() ? "按住播放实况照片" : "播放视频"}
-        onPressIn={() => { if (live()) start(); }} onPressOut={() => { if (live()) held.set(false); }}
+      <View role="button" testID="media-play" accessibilityLabel={live() ? "按住播放实况照片" : "播放视频"}
+        onPressDown={() => { if (live()) start(); }} onPressUp={() => { if (live()) held.set(false); }}
         onPress={e => { if (!live() || e.clickCount === 0) start(); }}
         style={{ ...frame, alignItems: "center", justifyContent: live() ? "flex-end" : "center", paddingBottom: live() ? 12 : 0 }}>
         <View style={badge}><Text style={caption}>{live() ? "按住播放实况" : "▶  播放视频"}</Text></View>
-      </Button>
+      </View>
     </If>
     <If when={failed() || !p.photo.videoUrl}><View style={{ ...badge, position: "absolute", top: 8, left: 8, pointerEvents: "none" }}>
       <Text style={caption}>{live() ? "实况片段无法播放" : "视频无法播放"}</Text>
