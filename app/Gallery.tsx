@@ -3,7 +3,7 @@ import { MediaBadge } from "./MotionMedia";
 import { cleanup, computed, createAnimatedValue, effect, Image, keymap, platform, reduceMotion, Scroll, signal, Text, untracked, View, type MouseEvent, type TransformStep, type ViewRef, type ViewStyle } from "nsh";
 import { Menu } from "nsh/desktop";
 import { Button } from "nsh/base";
-import { camera, closeUp, dropMs, inQuart, introMs, lean, liftMs, outQuart, pull, pullMs, recline, rise, settle, spineSpring, staggerMs } from "./AlbumMotion";
+import { camera, carry, closeUp, dropMs, hop, inQuart, introMs, lean, liftMs, out, outQuart, pull, pullMs, recline, rise, settle, spine, spineSpring, staggerMs, takeMs, thickness } from "./AlbumMotion";
 import { Action, centered, GlassButton, Hint, toolbarGlass, ink, muted, row } from "./Controls";
 import type { Album, Library, Photo } from "./DesktopState";
 
@@ -25,8 +25,14 @@ export function Switcher(p: { app: Library; prefix: string }) {
     <GlassButton label="唱片柜" icon="cabinet" id={`${p.prefix}-cabinet`} segment darkInk selected={p.app.library().viewMode === "cabinet"} onPress={() => p.app.changeView("cabinet")} />
   </View>;
 }
-const metal: ViewStyle = { height: 11, backgroundColor: "#686764", backgroundImage: "linear-gradient(180deg, #d7dad8 0%, #8b8c87 30%, #383936 54%, #a6a59f 80%, #454542 100%)", borderRadius: 2, borderColor: "#292a27", borderWidth: 1 };
 const pill: ViewStyle = { height: 30, paddingHorizontal: 15, borderRadius: 15, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(246,246,245,0.92)" };
+const wall: ViewStyle = { flex: 1, backgroundColor: "#e0dfdc", backgroundImage: "radial-gradient(circle at 50% 38%, rgba(255,255,255,0.86) 0%, rgba(255,255,255,0) 74%)" };
+// A picture ledge seen from the front: what stands on it sits `sunk` behind its lip, so the lip is drawn over it.
+const lip = 13, sunk = 5;
+function LedgeLip(p: { bottom: number }) {
+  return <View style={{ position: "absolute", left: 0, right: 0, bottom: p.bottom, height: lip, zIndex: 3, pointerEvents: "none", borderRadius: 2, backgroundColor: "#f4f3f0",
+    backgroundImage: "linear-gradient(180deg, #ffffff 0%, #f8f7f5 16%, #e7e6e2 100%)", boxShadow: "0 1px 0 rgba(0,0,0,0.12), 0 4px 5px rgba(0,0,0,0.08), 0 18px 24px rgba(0,0,0,0.16)" }} />;
+}
 function albumMenu(app: Library, album: Album, inspect: () => void, at?: { x: number; y: number }) {
   return Menu.popup([
     { label: "打开相册", onSelect: () => app.openAlbum(album.id) },
@@ -100,11 +106,8 @@ function Cover(p: { app: Library; album: Album; index: number; side: number; awa
   return <View ref={r => { frame = r; }} onMouseEnter={enter} onMouseMove={move} onMouseLeave={leave} onContextMenu={e => albumMenu(p.app, p.album, inspect, e.pagePosition)}
     style={{ width: p.side, height: p.side, zIndex: front() ? 2 : 1, opacity: hidden() ? 0 : 1, pointerEvents: hidden() ? "none" : "auto" }}>
     <View style={{ width: "100%", height: "100%", opacity: shown, transformOrigin: [p.side / 2 - p.away.x, p.side / 2 - p.away.y], transform: pose() }}>
-      <View style={{ position: "absolute", top: "100%", left: 0, right: 0, height: 7, overflow: "hidden", opacity: up() ? 0 : 0.2, transitionProperty: "opacity", transitionDuration: up() ? liftMs * 0.45 : dropMs }}>
-        <View style={{ width: "100%", height: p.side, scale: [1, -1] }}><Artwork photo={p.app.cover(p.album)} compactBadge={p.side < 96} /></View>
-      </View>
       <Button testID={`album-${p.album.id}`} accessibilityLabel={`${p.album.name}，${p.app.count(p.album)}，查看相册详情`} onPress={inspect}
-        style={{ width: "100%", height: "100%", boxShadow: up() ? "2px 20px 15px rgba(0,0,0,0.16)" : "2px 6px 5px rgba(0,0,0,0.26)", transitionProperty: "box-shadow", transitionDuration: up() ? liftMs : dropMs }}
+        style={{ width: "100%", height: "100%", boxShadow: up() ? "0 4px 6px rgba(0,0,0,0.08), 4px 26px 28px rgba(0,0,0,0.18)" : "0 2px 3px rgba(0,0,0,0.16), 3px 10px 16px rgba(0,0,0,0.20)", transitionProperty: "box-shadow", transitionDuration: up() ? liftMs : dropMs }}
         focusVisibleStyle={{ borderColor: "#81aff0", borderWidth: 2 }}>
         <Sleeve app={p.app} album={p.album} side={p.side} plain={over()} />
       </Button>
@@ -121,7 +124,7 @@ function Wall(p: { app: Library; width: number; height: number; stage: Stage }) 
   const columns = () => Math.max(1, Math.min(albums().length, 5, Math.floor(span() / 185)));
   // Editions spaces covers 14% of their side apart, and shelves 27% of it.
   const side = () => Math.floor(Math.min(240, (span() - 64) / (columns() + (columns() - 1) * 0.14)));
-  const pitch = () => side() * 1.27 + 12;
+  const pitch = () => side() * 1.27 + 12, foot = () => side() * 0.27 - 5;
   const shelves = computed(() => {
     const count = Math.ceil(albums().length / columns());
     return Array.from({ length: count }, (_, i) => albums().slice(i * columns(), (i + 1) * columns()).map((album, at, shelf) => ({
@@ -131,102 +134,147 @@ function Wall(p: { app: Library; width: number; height: number; stage: Stage }) 
   });
   const light = createAnimatedValue(untracked(p.stage.entering) && !reduceMotion() ? 0 : 1);
   light.timing(1, { duration: 1000, easing: "linear" });
-  return <View style={{ flex: 1, backgroundColor: "#d6d6d5", backgroundImage: "radial-gradient(circle at 52% 40%, rgba(255,255,255,0.78) 0%, rgba(255,255,255,0) 70%)" }}>
+  return <View style={wall}>
     <Scroll testID="gallery-wall" style={{ flex: 1, opacity: light }} contentStyle={{ alignItems: "center", paddingTop: Math.max(86, (p.height - shelves().length * pitch()) / 2), paddingBottom: 46 }}>
       <Each of={shelves()} key="index">{shelf => <View style={{ width: span(), height: pitch(), justifyContent: "flex-end", alignItems: "center" }}>
-        <View style={{ position: "absolute", left: 0, right: 0, bottom: side() * 0.27 - 5, height: 17, boxShadow: "0 24px 30px rgba(0,0,0,0.20), 0 6px 6px rgba(0,0,0,0.10)" }}>
-          <View style={{ height: 11, backgroundImage: "linear-gradient(180deg, #ececeb 0%, #ffffff 100%)" }} /><View style={{ height: 6, backgroundImage: "linear-gradient(180deg, #fafaf9 0%, #c9c9c7 100%)" }} />
-        </View>
-        <View style={{ flexDirection: "row", gap: side() * 0.14, marginBottom: side() * 0.27 + 8 }}>
+        <View style={{ flexDirection: "row", gap: side() * 0.14, marginBottom: foot() + lip - sunk }}>
           <Each of={shelf()} key={item => item.album.id}>{item => <Cover app={p.app} album={item().album} index={item().index} side={side()} away={item().away} stage={p.stage} />}</Each>
         </View>
+        <LedgeLip bottom={foot()} />
       </View>}</Each>
     </Scroll>
+  </View>;
+}
+const cjk = /[\u3040-\u30ff\u3400-\u9fff\uf900-\ufaff\uac00-\ud7af]/;
+/** The album's name down its spine: upright characters for Chinese, Japanese and Korean, a line turned on its side otherwise. */
+function SpineTitle(p: { name: string; width: number; height: number }) {
+  const size = () => p.width * 0.4, room = () => p.height * 0.6, top = () => p.height * 0.055;
+  const upright = () => { const all = [...p.name.replace(/\s+/g, "")], fit = Math.floor(room() / (size() * 1.2)); return all.length > fit ? [...all.slice(0, fit - 1), "︙"] : all; };
+  return <If when={cjk.test(p.name)} else={<View style={{ position: "absolute", left: (p.width - room()) / 2, top: top() + (room() - p.width) / 2, width: room(), height: p.width, justifyContent: "center", rotate: "90deg" }}>
+    <Text style={{ color: "#fff", fontFamily: "Georgia", fontSize: size(), numberOfLines: 1 }}>{p.name}</Text>
+  </View>}>
+    <View style={{ position: "absolute", left: 0, right: 0, top: top(), alignItems: "center" }}><Each of={upright()} key="index">{c => <Text style={{ color: "#fff", fontFamily: "Georgia", fontSize: size(), lineHeight: size() * 1.2 }}>{c()}</Text>}</Each></View>
+  </If>;
+}
+/** An album seen from its spine, the same in the row and on the album turning out of it. */
+function SpineFace(p: { app: Library; album: Album; width: number; height: number }) {
+  return <View style={{ width: p.width, height: p.height, borderRadius: p.width * 0.06, overflow: "hidden", backgroundColor: "#343332" }}>
+    <Artwork photo={p.app.cover(p.album)} compactBadge />
+    <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundImage: "linear-gradient(90deg, rgba(255,255,255,0.26) 0%, rgba(255,255,255,0) 24%, rgba(0,0,0,0) 60%, rgba(0,0,0,0.30) 100%), linear-gradient(180deg, rgba(0,0,0,0.52) 0%, rgba(0,0,0,0.24) 36%, rgba(0,0,0,0) 62%)" }} />
+    <SpineTitle name={p.album.name} width={p.width} height={p.height} />
   </View>;
 }
 function Spine(p: { app: Library; album: Album; stage: Stage }) {
   const over = signal(false), landing = signal(false);
   const lift = createAnimatedValue(0);
   let frame: ViewRef | undefined;
-  const up = () => (over() || landing()) && !p.stage.held();
-  effect(() => { if (reduceMotion()) lift.set(0); else lift.spring(up() ? -18 : 0, spineSpring); });
+  const raised = () => over() && !p.stage.held(), up = () => raised() || landing();
+  effect(() => { if (reduceMotion()) lift.set(0); else lift.spring(raised() ? -spine.lift : 0, spineSpring); });
   async function inspect() {
     if (p.stage.held()) return;
-    const from = await frameOf(frame, 33, 301, await lift.getValue());
+    const from = await frameOf(frame, spine.width, spine.height, await lift.getValue());
     if (!from) return;
     over.set(false);
-    p.stage.inspect({ album: p.album, spine: true, from, tilt: 0, place: () => frameOf(frame, 33, 301, reduceMotion() ? 0 : -18),
-      // The spine comes back pulled out, as it left, and settles into the row.
-      landed: () => { lift.set(reduceMotion() ? 0 : -18); landing.set(true); setTimeout(() => landing.set(false), 80); } });
+    p.stage.inspect({ album: p.album, spine: true, from, tilt: 0, place: () => frameOf(frame, spine.width, spine.height, reduceMotion() ? 0 : -spine.lift),
+      // The spine comes back above its place, still falling, and settles into the row.
+      landed: () => { if (reduceMotion()) return; lift.set(-spine.lift); lift.spring(0, { ...spineSpring, velocity: spine.fall }); landing.set(true); setTimeout(() => landing.set(false), 250); } });
   }
   const hidden = () => p.stage.held() === p.album.id;
   return <View ref={r => { frame = r; }} onMouseEnter={() => over.set(true)} onMouseLeave={() => over.set(false)} onContextMenu={e => albumMenu(p.app, p.album, inspect, e.pagePosition)} style={{ zIndex: up() ? 1 : 0, opacity: hidden() ? 0 : 1 }}>
     <Button testID={`album-${p.album.id}`} accessibilityLabel={`${p.album.name}，${p.app.count(p.album)}，查看相册详情`} tooltip={<Hint label={p.album.name} />} onPress={inspect}
-      style={{ width: 33, height: 301, padding: 2, gap: 1, borderRadius: 3, borderWidth: 1, borderColor: "#20211e", backgroundColor: "#52534e", translate: [0, lift],
-        boxShadow: up() ? "3px 10px 16px rgba(0,0,0,0.25)" : "1px 2px 2px rgba(0,0,0,0.10)", transitionProperty: "box-shadow", transitionDuration: 350, transitionTimingFunction: "ease-out" }}
+      style={{ width: spine.width, height: spine.height, borderRadius: 2, translate: [0, lift],
+        boxShadow: up() ? "0 3px 4px rgba(0,0,0,0.14), 5px 14px 20px rgba(0,0,0,0.24)" : "0 1px 2px rgba(0,0,0,0.18), 3px 4px 8px rgba(0,0,0,0.16)", transitionProperty: "box-shadow", transitionDuration: 350, transitionTimingFunction: "ease-out" }}
       focusVisibleStyle={{ borderColor: "#81aff0", borderWidth: 2 }}>
-      <View style={metal} /><View style={{ flex: 1 }}><Artwork photo={p.app.cover(p.album)} compactBadge /></View><View style={metal} />
+      <SpineFace app={p.app} album={p.album} width={spine.width} height={spine.height} />
     </Button>
   </View>;
 }
-function Cabinet(p: { app: Library; width: number; stage: Stage }) {
-  const shelves = computed(() => { const all = p.app.library().albums; const cap = Math.max(1, Math.floor((p.width - 122) / 41)); return Array.from({length: Math.ceil(all.length / cap)}, (_, i) => all.slice(i * cap, (i + 1) * cap)); });
-  return <Scroll testID="gallery-cabinet" style={{ flex: 1 }} contentStyle={{ paddingHorizontal: 32, paddingTop: 82, paddingBottom: 50, gap: 1 }}>
-    <Each of={shelves()} key="index">{shelf => <View style={{ backgroundColor: "#dadbd9", boxShadow: "0 9px 17px rgba(0,0,0,0.20)" }}>
-      <View style={{ height: 8, backgroundColor: "#fafaf9" }} />
-      <View style={{ flexDirection: "row", height: 338, borderLeftWidth: 10, borderRightWidth: 10, borderColor: "#f1f1ef", backgroundImage: "linear-gradient(180deg, #aaaaa8 0%, #c8c9c7 13%, #e3e3e1 100%)", paddingHorizontal: 18, alignItems: "flex-end", gap: 8 }}>
-        <Each of={shelf()} key={a => a.id}>{a => <Spine app={p.app} album={a()} stage={p.stage} />}</Each>
-      </View><View style={{ height: 13, backgroundImage: "linear-gradient(180deg, #e9e9e7 0%, #ffffff 55%, #d8d9d6 100%)" }} />
-    </View>}</Each>
-  </Scroll>;
+function Cabinet(p: { app: Library; width: number; height: number; stage: Stage }) {
+  const span = () => Math.max(200, Math.min(1100, p.width - 100));
+  const gap = 5, foot = 44, pitch = spine.height + spine.lift + lip - sunk + foot + 14;
+  const shelves = computed(() => { const all = p.app.library().albums; const cap = Math.max(1, Math.floor((span() - 64 + gap) / (spine.width + gap))); return Array.from({length: Math.ceil(all.length / cap)}, (_, i) => all.slice(i * cap, (i + 1) * cap)); });
+  return <View style={wall}>
+    <Scroll testID="gallery-cabinet" style={{ flex: 1 }} contentStyle={{ alignItems: "center", paddingTop: Math.max(60, (p.height - shelves().length * pitch) / 2), paddingBottom: 30 }}>
+      <Each of={shelves()} key="index">{shelf => <View style={{ width: span(), height: pitch, justifyContent: "flex-end", alignItems: "center" }}>
+        <View style={{ flexDirection: "row", alignItems: "flex-end", gap, marginBottom: foot + lip - sunk }}>
+          <Each of={shelf()} key={a => a.id}>{a => <Spine app={p.app} album={a()} stage={p.stage} />}</Each>
+        </View>
+        <LedgeLip bottom={foot} />
+      </View>}</Each>
+    </Scroll>
+  </View>;
 }
-/** The album pulled out to the middle of the window over a blurred gallery, as Editions shows an album's details. */
+/** The album taken to the middle of the window over a blurred gallery, as Editions shows an album's details. */
 function Detail(p: { app: Library; flight: Flight; width: number; height: number; origin: { x: number; y: number }; close: () => void }) {
   const f = p.flight;
   const side = () => Math.round(Math.min(f.spine ? 430 : f.from.width * closeUp, p.height * 0.55, p.width * 0.46));
   const left = () => (p.width - side()) / 2, top = () => (p.height - side()) / 2 - 18;
-  // Where the sleeve shows `rect`, as an offset and a scale from its place in the middle.
-  const pose = (rect: Rect) => ({ x: rect.x - p.origin.x + rect.width / 2 - left() - side() / 2, y: rect.y - p.origin.y + rect.height / 2 - top() - side() / 2, scale: rect.height / side() });
+  const depth = () => side() * thickness, eye = () => side() * camera / closeUp;
+  // In the row the album stands a quarter turn away: its spine is half a cover nearer the eye than its cover will be,
+  // so it shows `near` times larger, and lies to the left of the line the album turns about.
+  const near = eye() / (eye() - side() / 2);
+  // Where the album shows `rect`, as an offset and a scale from its place in the middle.
+  const pose = (rect: Rect) => ({ x: rect.x - p.origin.x + (f.spine ? rect.width : rect.width / 2) - left() - side() / 2, y: rect.y - p.origin.y + rect.height / 2 - top() - side() / 2, scale: rect.height / side() / (f.spine ? near : 1) });
   const start = pose(f.from);
-  // A spine is a cover seen edge-on: turned until it is as narrow as the spine.
-  const edge = f.spine ? Math.acos(Math.min(1, f.from.width / f.from.height)) * 180 / Math.PI : 0;
-  const x = createAnimatedValue(start.x), y = createAnimatedValue(start.y), scale = createAnimatedValue(start.scale), turn = createAnimatedValue(edge), tilt = createAnimatedValue(f.tilt);
-  const rx = createAnimatedValue(0), ry = createAnimatedValue(0), veil = createAnimatedValue(0), words = createAnimatedValue(0), action = createAnimatedValue(0);
+  const x = createAnimatedValue(start.x), y = createAnimatedValue(start.y), scale = createAnimatedValue(start.scale), turn = createAnimatedValue(f.spine ? 90 : 0), tilt = createAnimatedValue(f.tilt);
+  const rx = createAnimatedValue(0), ry = createAnimatedValue(0), veil = createAnimatedValue(0), words = createAnimatedValue(0), action = createAnimatedValue(0), edges = createAnimatedValue(f.spine ? 1 : 0);
   const active = signal(false);
   let leaving = false;
-  const calm = reduceMotion();
-  pull(x, start.x, 0); pull(y, start.y, 0); pull(turn, edge, 0);
-  pull(scale, start.scale, 1).then(end => { if (end.finished && !leaving) active.set(true); });
+  const calm = reduceMotion(), ms = f.spine ? takeMs : pullMs;
+  const arrived = (end: { finished: boolean }) => { if (end.finished && !leaving) { active.set(true); edges.timing(1, { duration: calm ? 0 : 200 }); } };
+  if (f.spine) {
+    carry(x, start.x, 0); hop(y, start.y, start.y - f.from.height * out, 0); carry(turn, 90, 0);
+    carry(scale, start.scale, 1).then(arrived);
+  } else {
+    pull(x, start.x, 0); pull(y, start.y, 0);
+    pull(scale, start.scale, 1).then(arrived);
+  }
   if (calm) tilt.set(0); else tilt.timing(0, { duration: liftMs, easing: outQuart });
-  veil.timing(1, { duration: calm ? 0 : pullMs * 0.7, easing: "easeOut" });
-  words.timing(1, { duration: calm ? 0 : 300, delay: calm ? 0 : 320 });
-  action.timing(1, { duration: calm ? 0 : 180, delay: calm ? 0 : pullMs - 100 });
+  veil.timing(1, { duration: calm ? 0 : ms * 0.7, easing: "easeOut" });
+  words.timing(1, { duration: calm ? 0 : 300, delay: calm ? 0 : ms - 380 });
+  action.timing(1, { duration: calm ? 0 : 180, delay: calm ? 0 : ms - 100 });
   async function dismiss() {
     if (leaving) return;
     leaving = true; active.set(false);
     settle(rx, ry);
     words.timing(0, { duration: 160 }); action.timing(0, { duration: 120 });
-    veil.timing(0, { duration: calm ? 0 : pullMs, easing: "easeIn" });
+    veil.timing(0, { duration: calm ? 0 : ms, easing: "easeIn" });
     const [place, across, down, scaled, turned] = await Promise.all([f.place(), x.getValue(), y.getValue(), scale.getValue(), turn.getValue()]);
     const home = pose(place ?? f.from);
-    pull(x, across, home.x); pull(y, down, home.y); pull(turn, turned, edge);
-    await pull(scale, scaled, home.scale);
+    if (f.spine) {
+      carry(x, across, home.x, true); hop(y, down, home.y - f.from.height * out, home.y, true); carry(turn, turned, 90, true);
+      await carry(scale, scaled, home.scale, true);
+    } else {
+      edges.timing(0, { duration: 120 });
+      pull(x, across, home.x); pull(y, down, home.y);
+      await pull(scale, scaled, home.scale);
+    }
     p.close(); f.landed();
   }
   effect(() => { if (!p.app.library().albums.some(a => a.id === f.album.id)) p.close(); });
   cleanup(keymap.bind("escape", dismiss));
+  // The album is a box behind its cover. Each face is a view turned onto its side of the box, under the cover: a face
+  // turned away from the eye lies within the cover's outline, a face turned to it beside the cover.
+  const body: TransformStep[] = [{ translateX: x }, { translateY: y }, { scale }, { perspective: eye() }, { rotateX: rx }, { rotateY: ry }, { rotateY: turn }, { rotateX: tilt }];
+  const face = (width: number, height: number, onto: TransformStep[]): ViewStyle => ({ position: "absolute", left: (side() - width) / 2, top: (side() - height) / 2, width, height, backfaceVisibility: "hidden", transform: [...body, ...onto] });
+  const back: TransformStep[] = [{ translateX: -side() / 2 }, { rotateY: -90 }, { translateX: -depth() / 2 }];
+  const paper = (across: boolean): ViewStyle => ({ opacity: edges, backgroundColor: "#dedad1", backgroundImage: `linear-gradient(${across ? 90 : 180}deg, rgba(0,0,0,0.10) 0%, rgba(0,0,0,0) 30%, rgba(0,0,0,0) 70%, rgba(0,0,0,0.12) 100%)` });
   return <View testID="album-detail" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 5 }}>
     <View testID="detail-backdrop" accessibilityLabel="放回相册" onPress={dismiss} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: veil, backdropFilter: "blur(7px)", maskImage: "linear-gradient(#000, #000)", backgroundColor: "rgba(226,226,225,0.3)" }} />
     <View style={{ position: "absolute", left: 34, top: 0, bottom: 36, width: Math.max(120, left() - 60), justifyContent: "center", gap: 10, opacity: words, pointerEvents: "none" }}>
       <Text style={{ color: ink, fontSize: p.width < 900 ? 24 : 30, fontFamily: "Georgia", numberOfLines: 3 }}>{f.album.name}</Text>
       <Text style={{ color: muted, fontSize: 13 }}>{p.app.count(f.album)}</Text>
     </View>
-    {/* Clipping flattens the turning sleeve into this layer: left in the backdrop's space, its far half sinks behind the blur. */}
+    {/* Clipping flattens the turning album into this layer: left in the backdrop's space, its far half sinks behind the blur. */}
     <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, overflow: "hidden", pointerEvents: "box-none" }}>
-      <View onMouseMove={e => { if (active()) lean(rx, ry, e.position, side(), [6.67, 8.57], 0.2); }} onMouseLeave={() => settle(rx, ry)}
-        style={{ position: "absolute", left: left(), top: top(), width: side(), height: side(),
-          transform: [{ perspective: side() * camera / closeUp }, { translateX: x }, { translateY: y }, { scale }, { rotateX: rx }, { rotateY: ry }, { rotateY: turn }, { rotateX: tilt }] }}>
-        <View style={{ width: "100%", height: "100%", boxShadow: "0 24px 48px rgba(0,0,0,0.25)" }}><Sleeve app={p.app} album={f.album} side={side()} /></View>
+      <View onMouseMove={e => { if (active()) lean(rx, ry, e.position, side(), [6.67, 8.57], 0.2); }} onMouseLeave={() => settle(rx, ry)} style={{ position: "absolute", left: left(), top: top(), width: side(), height: side() }}>
+        <If when={f.spine}><View style={{ ...face(depth(), side(), back), opacity: turn.interpolate({ inputRange: [0, 90], outputRange: [0, 1] }), boxShadow: "0 14px 30px rgba(0,0,0,0.30)" }} /></If>
+        <View style={{ ...face(side(), side(), []), boxShadow: "0 24px 48px rgba(0,0,0,0.25)" }} />
+        <View style={{ ...face(depth(), side(), [{ translateX: side() / 2 }, { rotateY: 90 }, { translateX: depth() / 2 }]), ...paper(true) }} />
+        <View style={{ ...face(side(), depth(), [{ translateY: -side() / 2 }, { rotateX: 90 }, { translateY: -depth() / 2 }]), ...paper(false) }} />
+        <View style={{ ...face(side(), depth(), [{ translateY: side() / 2 }, { rotateX: -90 }, { translateY: depth() / 2 }]), ...paper(false) }} />
+        <View style={{ ...face(depth(), side(), back), opacity: edges }}><SpineFace app={p.app} album={f.album} width={depth()} height={side()} /></View>
+        <View style={face(side(), side(), [])}><Sleeve app={p.app} album={f.album} side={side()} /></View>
       </View>
     </View>
     <View style={{ position: "absolute", left: 0, right: 0, top: top() + side() + 22, alignItems: "center", opacity: action, pointerEvents: "box-none" }}>
@@ -252,7 +300,7 @@ export function Gallery(p: { app: Library }) {
   } };
   return <View ref={r => { root = r; }} style={{ flex: 1, backgroundColor: "#f8f8f7" }} onLayout={e => size.set({ width: Math.max(200, e.bounds.size.width), height: Math.max(200, e.bounds.size.height) })}>
     <If when={p.app.library().albums.length > 0} else={<View style={centered}><Text style={{ color: ink, fontSize: 24, fontFamily: "Georgia" }}>创建第一本相册</Text><Text style={{ color: muted, fontSize: 14 }}>把照片和旁边的故事收在一起。</Text><Action label="新建相册" onPress={() => p.app.panel.set("create")} /></View>}>
-      <If when={p.app.library().viewMode === "wall"} else={<Cabinet app={p.app} width={size().width} stage={stage} />}><Wall app={p.app} width={size().width} height={size().height} stage={stage} /></If>
+      <If when={p.app.library().viewMode === "wall"} else={<Cabinet app={p.app} width={size().width} height={size().height} stage={stage} />}><Wall app={p.app} width={size().width} height={size().height} stage={stage} /></If>
     </If>
     <View style={{ ...row, position: "absolute", top: 6, left: 10, right: 10, justifyContent: "space-between", pointerEvents: "box-none" }}>
       <View desktop={{ windowDrag: true }} style={{ flex: 1, height: 34, justifyContent: "center" }}>
