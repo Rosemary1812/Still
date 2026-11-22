@@ -2,6 +2,10 @@
 
 Still 是一款本地相册应用。macOS、Windows 和 iPhone 客户端使用 NSH 源码提交 `4a114852`。界面用 TSX 编写，相册、照片副本、旁注和播放状态由 Rust 管理。相册保存在当前设备。
 
+相册可以混合保存照片、视频和 Live Photo。翻阅视频时直接在 Still 内播放；按住 Live Photo 可以播放动态部分。视频使用 MP4、MOV 或 M4V 容器，能否播放取决于设备的解码器。Apple 设备可从照片图库选择媒体，也可从文件导入；导出的 Live Photo 文件需要包含匹配标识才能自动配对。Windows 的文件导入将照片和视频作为独立条目。
+
+普通 JPEG、PNG、GIF 和 WebP 保留导入的文件；Apple 设备将其他受支持的图片格式转换为 JPEG。Live Photo 保留静态和动态资源，并单独生成预览。将媒体从相册移除不会立即删除图库文件。
+
 ## 开发
 
 安装 Rust stable。NSH 通过 `toolchain/nsh` 子模块固定到提交 `4a114852947a3ed486ad90b9d2dd22a0487a15f7`，启动脚本会初始化子模块并构建 CLI，应用原生依赖与 CLI 使用同一份源码。这个尚未发布的提交通过了 macOS 编辑后 Escape 与方向键回归测试；正式版 0.6.1 尚未通过该测试。Apple 平台需要完整的 Xcode；给 iPhone 模拟器或真机打包时，先用 rustup 安装对应的 Rust target（Apple Silicon 模拟器为 aarch64-apple-ios-sim，真机为 aarch64-apple-ios）。工作区已有 .tools 工具链时，启动脚本会自动选用它。

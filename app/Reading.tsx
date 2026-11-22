@@ -1,4 +1,5 @@
-import { cleanup, effect, keymap, platform, reduceMotion, signal, Text, View, type ViewStyle } from "nsh";
+import { importSummary, mediaName, thisItem } from "./MediaLabels";
+import { cleanup, effect, keymap, platform, reduceMotion, signal, Text, View, type InputRef, type ViewStyle } from "nsh";
 import { AlertDialog, Button, Input } from "nsh/base";
 import { currentWindow, Menu } from "nsh/desktop";
 import { Photos } from "contactsheet/native";
@@ -50,15 +51,13 @@ export function Reading(p: { app: Library }) {
     try {
       const done = source === "files" ? await Photos.addFiles(album) : source === "apple" ? await Photos.addApplePhotos(album) : await Photos.addDropped(album, source);
       p.app.refresh();
-      const unread = done.skipped ? `${done.skipped} 个文件无法读取` : "";
-      const held = done.existing && !done.added ? "这些照片已经在相册里了" : "";
-      const added = done.added ? `已添加 ${done.added} 张照片` : "";
-      const text = [added, held, unread].filter(Boolean).join("，");
-      if (text) say(text, !done.added && !held);
+      const text = importSummary(done);
+      if (text) say(text, !!done.skipped && !done.added && !done.existing);
     } catch (e) { fail(e); } finally { p.app.busy.set(false); }
   }
 
   const renaming = signal(false);
+  const focusedNote = signal<InputRef | null>(null);
   const draft = signal("");
   function rename() { draft.set(name()); renaming.set(true); }
   function endRename(save: boolean) {
@@ -73,7 +72,7 @@ export function Reading(p: { app: Library }) {
     try { Photos.setCover(p.app.albumID(), photo.id); p.app.refresh(); say("已设为相册封面"); } catch (e) { fail(e); }
   }
   async function remove(photo: Photo) {
-    const answer = await AlertDialog.show({ title: "从相册移除这张照片？", description: "只从这本相册移除，原始照片不受影响。", actions: [{ id: "cancel", label: "取消", role: "cancel" }, { id: "remove", label: "移除", role: "destructive" }] });
+    const answer = await AlertDialog.show({ title: `从相册移除${thisItem(photo)}？`, description: `只从这本相册移除，原始${mediaName(photo)}不受影响。`, actions: [{ id: "cancel", label: "取消", role: "cancel" }, { id: "remove", label: "移除", role: "destructive" }] });
     if (answer.action !== "remove") return;
     const at = p.app.photos().findIndex(item => item.id === photo.id), current = p.app.photoID() === photo.id;
     try {
@@ -87,7 +86,7 @@ export function Reading(p: { app: Library }) {
   const isCover = (photo: Photo) => { const album = p.app.album(); return !!album && p.app.cover(album)?.id === photo.id; };
   function photoMenu(photo: Photo, at: { x: number; y: number }) {
     Menu.popup([
-      onWall() && { label: "查看照片", onSelect: () => p.app.select(photo.id) },
+      onWall() && { label: `查看${mediaName(photo)}`, onSelect: () => p.app.select(photo.id) },
       { label: isCover(photo) ? "已是相册封面" : "设为相册封面", disabled: isCover(photo), onSelect: () => setCover(photo) },
       { type: "separator" },
       { label: "从相册移除…", onSelect: () => { remove(photo); } },
@@ -105,11 +104,13 @@ export function Reading(p: { app: Library }) {
   effect(() => {
     if (p.app.panel() !== "none") return;
     if (renaming()) { cleanup(keymap.bind({ escape: () => endRename(false) }, { when: "always" })); return; }
+    // On macOS an AVPlayerView counts as an editor for native shortcut routing.
+    const videoControls = platform.os === "macos" && !onWall() && p.app.photo()?.kind === "video" && !focusedNote();
     cleanup(keymap.bind({
       escape: () => onWall() ? p.app.home() : p.app.reading.set("wall"),
       left: () => { if (!onWall()) p.app.step(-1); },
       right: () => { if (!onWall()) p.app.step(1); },
-    }, { when: "notEditing" }));
+    }, { when: videoControls ? "always" : "notEditing" }));
   });
 
   const shown = () => awake() || !onWall() || empty() || paused() || renaming() || p.app.busy();
@@ -127,17 +128,17 @@ export function Reading(p: { app: Library }) {
           <Icon name="plus" size={26} color="rgba(255,255,255,0.6)" />
         </Button>
         <Text style={{ color: onPhoto, fontSize: 24, fontFamily: serif }}>{name()}</Text>
-        <Text style={{ color: onPhotoMuted, fontSize: 13 }}>这本相册还是空的。把照片或文件夹拖进来，或者：</Text>
+        <Text style={{ color: onPhotoMuted, fontSize: 13 }}>这本相册还是空的。把照片、视频或文件夹拖进来，或者：</Text>
         <View style={{ flexDirection: "row", gap: 8, marginTop: 6 }}>
           <Quiet id="empty-files" label="从文件选择" filled disabled={p.app.busy()} onPress={() => { add("files"); }} />
           <If when={platform.os === "macos"}><Quiet id="empty-apple" label="从 Apple 照片选择" disabled={p.app.busy()} onPress={() => { add("apple"); }} /></If>
         </View>
       </View>}>
-      <If when={onWall()} else={<Reader app={p.app} width={width()} fail={fail} cover={setCover} remove={photo => { remove(photo); }} menu={photoMenu} />}>
+      <If when={onWall()} else={<Reader app={p.app} focusedNote={focusedNote} width={width()} fail={fail} cover={setCover} remove={photo => { remove(photo); }} menu={photoMenu} />}>
         <PhotoWall app={p.app} width={width()} height={height()} paused={paused() || renaming() || p.app.panel() !== "none"} menu={photoMenu} />
         <View style={{ ...cover, top: undefined, height: 170, justifyContent: "flex-end", paddingHorizontal: 26, paddingBottom: 22, gap: 4, pointerEvents: "none", backgroundImage: "linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.72) 100%)", opacity: shown() ? 1 : 0, ...fade, transitionDuration: 420 }}>
           <Text style={{ color: onPhoto, fontSize: 30, fontFamily: serif, numberOfLines: 1 }}>{name()}</Text>
-          <Text style={{ color: onPhotoMuted, fontSize: 12.5, letterSpacing: 0.4 }}>{`${p.app.photos().length} 张照片`}</Text>
+          <Text style={{ color: onPhotoMuted, fontSize: 12.5, letterSpacing: 0.4 }}>{p.app.count(p.app.album())}</Text>
         </View>
       </If>
     </If>
@@ -168,14 +169,14 @@ export function Reading(p: { app: Library }) {
       <View style={{ ...cover, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(18,17,16,0.62)", pointerEvents: "none" }}>
         <View style={{ paddingVertical: 22, paddingHorizontal: 34, borderRadius: 16, borderWidth: 1.5, borderStyle: "dashed", borderColor: "rgba(255,255,255,0.55)", alignItems: "center", gap: 6 }}>
           <Text style={{ color: onPhoto, fontSize: 17, fontFamily: serif }}>{`松开，添加到「${name()}」`}</Text>
-          <Text style={{ color: onPhotoMuted, fontSize: 12.5 }}>照片和文件夹都可以</Text>
+          <Text style={{ color: onPhotoMuted, fontSize: 12.5 }}>支持照片、视频和文件夹</Text>
         </View>
       </View>
     </If>
     <If when={notice() || p.app.busy()}>
       <View style={{ ...cover, top: undefined, bottom: onWall() || empty() ? 24 : 86, alignItems: "center", pointerEvents: "box-none" }}>
         <View testID="album-notice" role="alert" style={{ ...pill, paddingVertical: 8, paddingHorizontal: 16, maxWidth: "80%" }}>
-          <Text style={{ color: notice()?.problem && !p.app.busy() ? "#ffb1a8" : onPhoto, fontSize: 12.5 }}>{p.app.busy() ? "正在添加照片…" : notice()?.text ?? ""}</Text>
+          <Text style={{ color: notice()?.problem && !p.app.busy() ? "#ffb1a8" : onPhoto, fontSize: 12.5 }}>{p.app.busy() ? "正在添加…" : notice()?.text ?? ""}</Text>
         </View>
       </View>
     </If>

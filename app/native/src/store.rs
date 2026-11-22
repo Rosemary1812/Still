@@ -1,15 +1,18 @@
-use nsh_core::{picker::PickedFile, prelude::*};
+use nsh_core::prelude::*;
 use rusqlite::{Connection, OptionalExtension, TransactionBehavior, params};
-use sha2::{Digest, Sha256};
 use std::{
     collections::HashMap,
     env, fs,
-    io::{self, Write},
     path::{Component, Path, PathBuf},
     time::Duration,
 };
-use tempfile::NamedTempFile;
 use uuid::Uuid;
+
+mod media;
+mod movie;
+mod recovery;
+pub use media::MediaInput;
+pub type ImportCounts = crate::Imported;
 
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 #[derive(Clone, JsObject)]
@@ -23,6 +26,9 @@ pub struct Album {
 pub struct Photo {
     pub id: String,
     pub url: String,
+    pub kind: String,
+    pub video_url: Option<String>,
+    pub duration: Option<f64>,
     pub title: String,
     pub description: String,
     pub date: String,
@@ -36,6 +42,7 @@ pub struct Library {
 }
 
 /// The managed copy's extension, or `None` for bytes Still cannot show on every client.
+#[cfg(windows)]
 pub fn image_extension(bytes: &[u8]) -> Option<&'static str> {
     imagesize::blob_size(bytes).ok()?;
     if bytes.starts_with(b"\xff\xd8\xff") {
@@ -74,10 +81,20 @@ pub struct Store {
 impl Store {
     pub fn open(root: PathBuf) -> Result<Self> {
         fs::create_dir_all(root.join("media"))?;
-        let db = Connection::open(root.join("library.sqlite3"))?;
+        let mut db = Connection::open(root.join("library.sqlite3"))?;
         db.busy_timeout(Duration::from_secs(5))?;
         db.execute_batch("PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL;")?;
-        db.execute_batch(include_str!("../schema.sql"))?;
+        let migration = db.transaction_with_behavior(TransactionBehavior::Immediate)?;
+        match migration.pragma_query_value(None, "user_version", |r| r.get::<_, u32>(0))? {
+            0 => {
+                migration.execute_batch(include_str!("../schema.sql"))?;
+                migration.execute_batch(include_str!("../media-schema.sql"))?;
+            }
+            1 => {}
+            _ => return Err("图库由更新版本的 Still 创建".into()),
+        }
+        recovery::recover(&root, &migration)?;
+        migration.commit()?;
         #[cfg(target_os = "ios")]
         let db = {
             let mut db = db;
@@ -97,6 +114,21 @@ impl Store {
             .into_os_string()
             .into_string()
             .map_err(|_| "无法生成图片地址".into())
+    }
+    // The iOS Video host calls NSURL URLWithString, while its Image host
+    // opens native paths. Desktop video hosts also accept native paths.
+    fn video_url(root: &Path, relative: &str) -> Result<String> {
+        let path = Self::url(root, relative)?;
+        #[cfg(target_os = "ios")]
+        return Self::file_url(Path::new(&path));
+        #[cfg(not(target_os = "ios"))]
+        Ok(path)
+    }
+    #[cfg(any(target_os = "ios", test))]
+    fn file_url(path: &Path) -> Result<String> {
+        url::Url::from_file_path(path)
+            .map(String::from)
+            .map_err(|_| "无法生成视频地址".into())
     }
     pub fn library(&mut self) -> Result<Library> {
         let tx = self.db.transaction()?;
@@ -120,7 +152,29 @@ impl Store {
             }
         }
         let mut photos = Vec::new();
-        for item in tx.prepare("SELECT id,path,title,description,date,location FROM photos WHERE EXISTS(SELECT 1 FROM members WHERE photo=photos.id) ORDER BY rowid")?.query_map([],|r|Ok(Photo{id:r.get(0)?,url:r.get(1)?,title:r.get(2)?,description:r.get(3)?,date:r.get(4)?,location:r.get(5)?}))?{let mut p=item?;p.url=Self::url(&self.root,&p.url)?;photos.push(p)}
+        let mut query = tx.prepare(
+            "SELECT p.id,p.path,p.title,p.description,p.date,p.location,
+                    COALESCE(m.kind,'photo'),m.motion,m.duration
+             FROM photos p LEFT JOIN media_resources m ON m.photo=p.id
+             WHERE EXISTS(SELECT 1 FROM members WHERE photo=p.id) ORDER BY p.rowid",
+        )?;
+        let mut rows = query.query([])?;
+        while let Some(row) = rows.next()? {
+            let motion: Option<String> = row.get(7)?;
+            photos.push(Photo {
+                id: row.get(0)?,
+                url: Self::url(&self.root, &row.get::<_, String>(1)?)?,
+                title: row.get(2)?,
+                description: row.get(3)?,
+                date: row.get(4)?,
+                location: row.get(5)?,
+                kind: row.get(6)?,
+                video_url: motion
+                    .map(|p| Self::video_url(&self.root, &p))
+                    .transpose()?,
+                duration: row.get(8)?,
+            });
+        }
         let view_mode = tx
             .query_row("SELECT value FROM settings WHERE key='viewMode'", [], |r| {
                 r.get(0)
@@ -200,6 +254,16 @@ impl Store {
             .query_row("SELECT 1 FROM albums WHERE id=?1", [id], |_| Ok(()))?;
         self.db.prepare("SELECT p.path FROM photos p JOIN members m ON m.photo=p.id WHERE m.album=?1 ORDER BY position")?.query_map([id],|r|r.get::<_,String>(0))?.map(|row|Self::url(&self.root,&row?)).collect()
     }
+    pub fn video_posters(&self, album: &str) -> Result<Vec<String>> {
+        self.db
+            .prepare(
+                "SELECT p.path FROM members a JOIN photos p ON a.photo=p.id
+             JOIN media_resources m ON p.id=m.photo WHERE a.album=?1 AND m.kind='video'",
+            )?
+            .query_map([album], |r| r.get::<_, String>(0))?
+            .map(|p| Self::url(&self.root, &p?))
+            .collect()
+    }
     pub fn shuffle(&self) -> Result<bool> {
         Ok(self
             .db
@@ -214,112 +278,32 @@ impl Store {
         self.db.execute("INSERT INTO settings(key,value) VALUES('shuffle',?1) ON CONFLICT(key) DO UPDATE SET value=excluded.value",[if enabled {"1"} else {"0"}])?;
         Ok(())
     }
-    pub fn create_with_photos(&mut self, name: &str, files: Vec<PickedFile>) -> Result<String> {
-        if files.is_empty() {
-            return Ok(String::new());
-        }
-        let id = Uuid::new_v4().to_string();
-        self.import_batch(&id, Some(Self::name(name)?), files)?;
-        Ok(id)
-    }
-    pub fn import(&mut self, album: &str, files: Vec<PickedFile>) -> Result<()> {
-        self.import_batch(album, None, files)
-    }
-    fn import_batch(
-        &mut self,
-        album: &str,
-        new_name: Option<&str>,
-        files: Vec<PickedFile>,
-    ) -> Result<()> {
-        // Every photo is installed before the transaction can make its membership visible.
-        // Content names make crash leftovers harmless and reusable on retry.
-        let prepared = files
-            .into_iter()
-            .map(|file| {
-                let bytes = file.data.bytes();
-                let Some(ext) = image_extension(bytes) else {
-                    return Err(format!("无法读取图片：{}", file.name).into());
-                };
-                Ok((format!("{:x}", Sha256::digest(bytes)), ext, file))
-            })
-            .collect::<Result<Vec<_>>>()?;
-        let tx = self
-            .db
-            .transaction_with_behavior(TransactionBehavior::Immediate)?;
-        if let Some(name) = new_name {
-            tx.execute("INSERT INTO albums(id,name) VALUES(?1,?2)", [album, name])?;
-        } else {
-            tx.query_row("SELECT 1 FROM albums WHERE id=?1", [album], |_| Ok(()))?;
-        }
-        for (digest, ext, file) in prepared {
-            let bytes = file.data.bytes();
-            let (id, relative) = match tx
-                .query_row(
-                    "SELECT id,path FROM photos WHERE digest=?1",
-                    [&digest],
-                    |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)),
-                )
-                .optional()?
-            {
-                Some(row) => row,
-                None => {
-                    let id = Uuid::new_v4().to_string();
-                    let relative = format!("media/{digest}.{ext}");
-                    tx.execute(
-                        "INSERT INTO photos(id,path,digest) VALUES(?1,?2,?3)",
-                        params![id, relative, digest],
-                    )?;
-                    (id, relative)
-                }
-            };
-            Self::url(&self.root, &relative)?;
-            let target = self.root.join(relative);
-            if !target.exists() {
-                let parent = target.parent().ok_or("无效的媒体路径")?;
-                fs::create_dir_all(parent)?;
-                let mut tmp = NamedTempFile::new_in(parent)?;
-                tmp.write_all(bytes)?;
-                tmp.as_file().sync_all()?;
-                if let Err(e) = tmp.persist_noclobber(&target) {
-                    if e.error.kind() != io::ErrorKind::AlreadyExists {
-                        return Err(e.into());
-                    }
-                }
-                #[cfg(unix)]
-                fs::File::open(parent)?.sync_all()?;
-            }
-            tx.execute("INSERT INTO members(album,photo,position) SELECT ?1,?2,COALESCE(MAX(position),-1)+1 FROM members WHERE album=?1 ON CONFLICT(album,photo) DO NOTHING",params![album,id])?;
-        }
-        tx.commit()?;
-        Ok(())
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use nsh_core::ImageData;
-    fn image(name: &str, bytes: &'static [u8]) -> PickedFile {
-        PickedFile::new(name, "image/png", ImageData::new(bytes))
+    fn fixture(name: &str) -> PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures")
+            .join(name)
+    }
+    fn image(name: &str) -> MediaInput {
+        MediaInput::Photo(fixture(name))
     }
     const FIRST: &[u8] = include_bytes!("../tests/fixtures/first.png");
-    const SECOND: &[u8] = include_bytes!("../tests/fixtures/second.png");
     #[test]
     fn reopen_managed_shared_photos_in_user_order() {
         let dir = tempfile::tempdir().unwrap();
         let mut s = Store::open(dir.path().to_owned()).unwrap();
         let a = s.create("旅行").unwrap();
         let b = s.create("家庭").unwrap();
-        s.import(
+        s.import_media(
             &a,
-            vec![
-                image("a.png", FIRST),
-                image("b.png", SECOND),
-                image("another-name.png", FIRST),
-            ],
+            vec![image("first.png"), image("second.png"), image("first.png")],
         )
         .unwrap();
-        s.import(&b, vec![image("renamed.png", SECOND)]).unwrap();
+        s.import_media(&b, vec![image("second.png")]).unwrap();
         let l = s.library().unwrap();
         let ids = l.albums[0].photo_ids.clone();
         assert_eq!(ids.len(), 2);
@@ -360,25 +344,52 @@ mod tests {
         let root = dir.path().join("Application Support/Still #相册");
         let mut store = Store::open(root).unwrap();
         let album = store.create("Still").unwrap();
-        store.import(&album, vec![image("one", FIRST)]).unwrap();
+        store
+            .import_media(&album, vec![image("first.png")])
+            .unwrap();
         let source = store.library().unwrap().photos[0].url.clone();
         assert_eq!(store.playlist(&album).unwrap(), [source.clone()]);
         assert!(source.contains("Application Support"));
         assert_eq!(fs::read(source).unwrap(), FIRST);
     }
     #[test]
+    fn ios_video_url_round_trips_reserved_characters_spaces_and_unicode() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join("Still #相册 100%");
+        let relative = "media/湖边 #1%.mov";
+        let native = root.join(relative);
+        let file_url = Store::file_url(&native).unwrap();
+        assert!(file_url.starts_with("file:///"));
+        for escaped in ["%20", "%23", "%25", "%E6%B9%96"] {
+            assert!(file_url.contains(escaped), "{file_url}");
+        }
+        assert_eq!(
+            url::Url::parse(&file_url).unwrap().to_file_path().unwrap(),
+            native
+        );
+        #[cfg(target_os = "ios")]
+        assert_eq!(Store::video_url(&root, relative).unwrap(), file_url);
+        #[cfg(not(target_os = "ios"))]
+        assert_eq!(
+            Path::new(&Store::video_url(&root, relative).unwrap()),
+            native
+        );
+        assert!(Store::video_url(&root, "../outside.mov").is_err());
+    }
+    #[test]
     fn creating_album_from_picker_is_all_or_nothing() {
         let dir = tempfile::tempdir().unwrap();
         let mut store = Store::open(dir.path().into()).unwrap();
-        assert_eq!(store.create_with_photos("cancel", vec![]).unwrap(), "");
+        assert_eq!(store.create_with_media("cancel", vec![]).unwrap(), "");
         assert!(
             store
-                .create_with_photos("failure", vec![image("ok", FIRST), image("broken", b"GIF")])
+                .create_with_media("failure", vec![image("first.png"), image("broken.png")])
                 .is_err()
         );
         assert!(store.library().unwrap().albums.is_empty());
+        assert_eq!(fs::read_dir(dir.path().join("media")).unwrap().count(), 0);
         let id = store
-            .create_with_photos("success", vec![image("ok", FIRST)])
+            .create_with_media("success", vec![image("first.png")])
             .unwrap();
         assert_eq!(store.playlist(&id).unwrap().len(), 1);
         assert!(!store.shuffle().unwrap());
@@ -387,24 +398,24 @@ mod tests {
         assert!(Store::open(dir.path().into()).unwrap().shuffle().unwrap());
     }
     #[test]
-    fn invalid_batch_and_nonmember_cover_make_no_visible_changes() {
+    fn invalid_items_are_skipped_and_nonmember_cover_is_rejected() {
         let dir = tempfile::tempdir().unwrap();
         let mut s = Store::open(dir.path().to_owned()).unwrap();
         let a = s.create("A").unwrap();
         let b = s.create("B").unwrap();
-        assert!(
-            s.import(&a, vec![image("ok", FIRST), image("broken", b"GIF89a")])
-                .is_err()
-        );
-        assert_eq!(fs::read_dir(dir.path().join("media")).unwrap().count(), 0);
-        assert!(s.library().unwrap().photos.is_empty());
-        s.import(&a, vec![image("ok", FIRST)]).unwrap();
+        let counts = s
+            .import_media(&a, vec![image("first.png"), image("broken.png")])
+            .unwrap();
+        assert_eq!((counts.added, counts.skipped), (1, 1));
         let photo = s.library().unwrap().photos[0].id.clone();
         assert!(s.cover(&b, &photo).is_err());
         assert!(s.library().unwrap().albums[1].cover_id.is_none());
         assert!(s.rename(&a, "  ").is_err());
         assert!(s.view("bogus").is_err());
-        assert!(s.import("missing", vec![image("b", SECOND)]).is_err());
+        assert!(
+            s.import_media("missing", vec![image("second.png")])
+                .is_err()
+        );
         assert_eq!(s.library().unwrap().photos.len(), 1);
     }
 }

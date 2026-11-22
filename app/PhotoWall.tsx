@@ -1,3 +1,4 @@
+import { itemLabel, mediaName } from "./MediaLabels";
 import { cleanup, computed, PanResponder, signal, View } from "nsh";
 import { Button } from "nsh/base";
 import { Artwork } from "./Gallery";
@@ -40,9 +41,9 @@ export function PhotoWall(p: { app: Library; width: number; height: number; paus
   return <View testID="photo-wall" style={{ flex: 1, overflow: "hidden" }} {...drag.panHandlers}>
     <Each of={[0, 1, 2, 3]}>{r => <View style={{ flexDirection: "row", height: edge(), flexShrink: 0, transform: [{ translateX: -(position(r()) - Math.floor(position(r()))) * edge() }] }}>
       <Each of={cells()}>{x => <View style={{ height: edge(), width: edge(), flexShrink: 0 }} onContextMenu={e => { const photo = at(r(), x()); if (photo) p.menu(photo, e.pagePosition); }}>
-        <Button accessibilityLabel={at(r(), x())?.title || `查看照片 ${1 + index(r(), x())}`} onPress={() => { const photo = at(r(), x()); if (photo) p.app.select(photo.id); }}
+        <Button accessibilityLabel={itemLabel(at(r(), x()), `查看${mediaName(at(r(), x()))} ${1 + index(r(), x())}`)} onPress={() => { const photo = at(r(), x()); if (photo) p.app.select(photo.id); }}
           style={{ flex: 1 }} hoverStyle={{ opacity: 0.86 }} focusVisibleStyle={{ borderColor: "#9cc4fb", borderWidth: 3 }}>
-          <Artwork photo={at(r(), x())} />
+          <Artwork photo={at(r(), x())} compactBadge={edge() < 96} />
         </Button>
       </View>}</Each>
     </View>}</Each>
