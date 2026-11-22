@@ -1,3 +1,6 @@
+import { itemLabel, mediaName, thisItem } from "./MediaLabels";
+import { currentWindow } from "nsh/desktop";
+import { MotionMedia } from "./MotionMedia";
 import { cleanup, computed, effect, Image, keymap, Scroll, signal, Text, untracked, View, type InputRef, type InputStyle, type ScrollRef, type Signal } from "nsh";
 import { Button, Input } from "nsh/base";
 import { Photos } from "contactsheet/native";
@@ -14,7 +17,7 @@ const fieldFocus = { backgroundColor: "rgba(255,255,255,0.09)" };
 const thumb = 46, thumbGap = 6;
 
 // Notes are written where they are read. They save themselves, so the page has no edit mode.
-function Notes(p: { app: Library; fail: (message: string) => void; cover: (photo: Photo) => void; remove: (photo: Photo) => void }) {
+function Notes(p: { app: Library; focusedNote: Signal<InputRef | null>; fail: (message: string) => void; cover: (photo: Photo) => void; remove: (photo: Photo) => void }) {
   const title = signal(""), description = signal(""), date = signal(""), location = signal("");
   const saved = signal(false);
   let owner = "";
@@ -41,7 +44,7 @@ function Notes(p: { app: Library; fail: (message: string) => void; cover: (photo
     clearTimeout(pending);
     pending = setTimeout(commit, 700);
   }
-  const focused = signal<InputRef | null>(null);
+  const focused = p.focusedNote;
   effect(() => {
     const id = p.app.photoID(), photo = p.app.photo();
     untracked(() => {
@@ -56,7 +59,7 @@ function Notes(p: { app: Library; fail: (message: string) => void; cover: (photo
     const input = focused();
     if (input) cleanup(keymap.bind({ escape: () => input.blur() }, { when: "always" }));
   });
-  cleanup(() => { commit(); clearTimeout(badge); });
+  cleanup(() => { focused.set(null); commit(); clearTimeout(badge); });
   const bind = (input: () => InputRef | undefined) => ({ onFocus: () => focused.set(input() ?? null), onBlur: () => { focused.set(null); commit(); } });
   let titleInput: InputRef | undefined, dateInput: InputRef | undefined, placeInput: InputRef | undefined, storyInput: InputRef | undefined;
   const isCover = () => { const album = p.app.album(); return !!album && p.app.cover(album)?.id === p.app.photoID(); };
@@ -75,7 +78,7 @@ function Notes(p: { app: Library; fail: (message: string) => void; cover: (photo
         style={{ ...field, flex: 1, height: 28, fontSize: 12.5, color: onPhotoMuted }} hoverStyle={fieldHover} focusStyle={fieldFocus} />
     </View>
     <View style={{ height: 0.5, backgroundColor: "rgba(255,255,255,0.16)" }} />
-    <Input testID="reader-story" accessibilityLabel="旁注" placeholder="写下这张照片的故事…" multiline value={description()} onChange={e => edit(description, e.value)} ref={r => (storyInput = r)} {...bind(() => storyInput)}
+    <Input testID="reader-story" accessibilityLabel="旁注" placeholder={`写下${thisItem(p.app.photo())}的故事…`} multiline value={description()} onChange={e => edit(description, e.value)} ref={r => (storyInput = r)} {...bind(() => storyInput)}
       style={{ ...field, flex: 1, minHeight: 60, paddingVertical: 6, fontSize: 14.5, lineHeight: 23 }} hoverStyle={fieldHover} focusStyle={fieldFocus} />
     <View style={{ flexDirection: "row", gap: 8 }}>
       <Quiet id="photo-cover" label={isCover() ? "相册封面" : "设为封面"} disabled={isCover()} onPress={() => { const photo = p.app.photo(); if (photo) p.cover(photo); }} />
@@ -93,7 +96,8 @@ function Arrow(p: { id: string; label: string; icon: "previous" | "next"; shown:
 }
 
 // The photograph is the page: a print on a stage lit by its own colors, its notes beside it.
-export function Reader(p: { app: Library; width: number; fail: (message: string) => void; cover: (photo: Photo) => void; remove: (photo: Photo) => void; menu: (photo: Photo, at: { x: number; y: number }) => void }) {
+export function Reader(p: { app: Library; focusedNote: Signal<InputRef | null>; width: number; fail: (message: string) => void; cover: (photo: Photo) => void; remove: (photo: Photo) => void; menu: (photo: Photo, at: { x: number; y: number }) => void }) {
+  const window = currentWindow();
   const room = signal({ width: 600, height: 400 });
   const shapes = signal(new Map<string, number>());
   const hovering = signal(false);
@@ -117,23 +121,24 @@ export function Reader(p: { app: Library; width: number; fail: (message: string)
         <View onContextMenu={e => { const photo = p.app.photo(); if (photo) p.menu(photo, e.pagePosition); }}
           style={{ width: print().width, height: print().height, borderRadius: 5, overflow: "hidden", backgroundColor: "rgba(0,0,0,0.25)", boxShadow: "0 22px 60px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.35)" }}>
           <If when={p.app.photo()?.url} else={<Artwork photo={p.app.photo()} />}>
-            <Image src={p.app.photo()?.url ?? ""} accessibilityLabel={p.app.photo()?.title || `照片 ${p.app.index() + 1}`} fadeDuration={200} style={{ width: "100%", height: "100%", objectFit: "contain" }}
+            <Image src={p.app.photo()?.url ?? ""} accessibilityLabel={itemLabel(p.app.photo(), `${mediaName(p.app.photo())} ${p.app.index() + 1}`)} fadeDuration={200} style={{ width: "100%", height: "100%", objectFit: "contain" }}
               onLoad={e => { const id = p.app.photoID(); if (e.size.height > 0 && shapes().get(id) !== e.size.width / e.size.height) shapes.set(new Map(shapes()).set(id, e.size.width / e.size.height)); }} />
           </If>
+          <If when={window.state()?.visible !== false}><MotionMedia photo={p.app.photo()} /></If>
         </View>
         <If when={p.app.index() > 0}><Arrow id="photo-previous" label="上一张" icon="previous" shown={hovering()} onPress={() => p.app.step(-1)} /></If>
         <If when={p.app.index() < p.app.photos().length - 1}><Arrow id="photo-next" label="下一张" icon="next" shown={hovering()} onPress={() => p.app.step(1)} /></If>
       </View>
       <View style={{ width: notesWidth(), paddingRight: 30, paddingLeft: 4, justifyContent: "center" }}>
-        <View style={{ height: Math.min(room().height - 24, Math.max(print().height, 300)) }}><Notes app={p.app} fail={p.fail} cover={p.cover} remove={p.remove} /></View>
+        <View style={{ height: Math.min(room().height - 24, Math.max(print().height, 300)) }}><Notes app={p.app} focusedNote={p.focusedNote} fail={p.fail} cover={p.cover} remove={p.remove} /></View>
       </View>
     </View>
     <Scroll horizontal ref={r => (strip = r)} scrollbar={false} style={{ height: 70, flexGrow: 0 }} contentStyle={{ flexDirection: "row", alignItems: "center", gap: thumbGap, paddingHorizontal: stripInset(), paddingBottom: 6 }}>
       <Each of={p.app.photos()}>{item => <View onContextMenu={e => p.menu(item(), e.pagePosition)}>
-        <Button accessibilityLabel={item().title || "查看这张照片"} selected={item().id === p.app.photoID()} onPress={() => p.app.select(item().id)}
+        <Button accessibilityLabel={itemLabel(item(), `查看${thisItem(item())}`)} selected={item().id === p.app.photoID()} onPress={() => p.app.select(item().id)}
           style={{ ...fade, width: thumb, height: thumb, borderRadius: 7, overflow: "hidden", borderWidth: 2, borderColor: item().id === p.app.photoID() ? onPhoto : "transparent", opacity: item().id === p.app.photoID() ? 1 : 0.5 }}
           hoverStyle={{ opacity: 1 }} focusVisibleStyle={{ borderColor: "#9cc4fb", opacity: 1 }}>
-          <Artwork photo={item()} />
+          <Artwork photo={item()} compactBadge />
         </Button>
       </View>}</Each>
     </Scroll>

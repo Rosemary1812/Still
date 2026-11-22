@@ -39,6 +39,8 @@ case "$action" in
           export STILL_LIBRARY_DIR="$STILL_LIBRARY_DIR/keyboard"
           "$cli" test KeyboardSeed.test.tsx
           "$cli" test Keyboard.test.tsx --target macos
+          export STILL_LIBRARY_DIR="$test_library/display"
+          "$cli" test Display.test.tsx --target macos
         fi ;;
       ios|ios-simulator)
         "$cli" test Mobile.test.tsx "$@" ;;

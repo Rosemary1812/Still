@@ -13,5 +13,15 @@ fastrand = "2"
 sha2 = "0.10"
 uuid = { version = "1", features = ["v4"] }
 tempfile = "3"
+serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 imagesize = "0.15"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62", features = ["Storage_FileProperties", "Storage_Streams", "Win32_System_WinRT"] }
+
+[target.'cfg(target_os = "ios")'.dependencies]
+url = "2"
+
+[dev-dependencies]
+url = "2"

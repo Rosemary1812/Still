@@ -23,22 +23,17 @@ const strokes = {
   plus: ["M12 5.5v13", "M5.5 12h13"],
   wall: ["M4 4.5h6.5V11H4z", "M13.5 4.5H20V11h-6.5z", "M4 13.5h6.5V20H4z", "M13.5 13.5H20V20h-6.5z"],
   reader: ["M3.5 5.5h10v13h-10z", "M16.5 8.5h4", "M16.5 12h4", "M16.5 15.5h2.5"],
-  more: [],
-  play: [],
   close: ["M6.5 6.5l11 11", "M17.5 6.5l-11 11"],
 } as const;
 export type IconName = keyof typeof strokes;
 const paths = Object.fromEntries(Object.entries(strokes).map(([name, list]) => [name, list.map(d => new Path2D(d))])) as Record<IconName, Path2D[]>;
-const playShape = new Path2D("M8.5 5.6v12.8a.6.6 0 0 0 .9.5l10.3-6.4a.6.6 0 0 0 0-1L9.4 5.1a.6.6 0 0 0-.9.5z");
 
 export function Icon(p: { name: IconName; size?: number; color?: string }) {
   return <Canvas style={{ width: p.size ?? 16, height: p.size ?? 16, pointerEvents: "none" }} draw={(cx, { width }) => {
     cx.scale(width / 24, width / 24);
     cx.strokeStyle = p.color ?? onPhoto; cx.fillStyle = cx.strokeStyle;
     cx.lineWidth = 1.9; cx.lineCap = "round"; cx.lineJoin = "round";
-    if (p.name === "more") { for (const x of [5, 12, 19]) { cx.beginPath(); cx.arc(x, 12, 1.75, 0, Math.PI * 2); cx.fill(); } }
-    else if (p.name === "play") cx.fill(playShape);
-    else for (const path of paths[p.name]) cx.stroke(path);
+    for (const path of paths[p.name]) cx.stroke(path);
   }} />;
 }
 
@@ -67,8 +62,4 @@ export function Quiet(p: { id?: string; label: string; onPress: () => void; disa
     focusVisibleStyle={{ borderColor: "#9cc4fb", borderWidth: 2 }}>
     <Text style={{ color: p.filled ? "#1d1c1a" : p.danger ? "#ff9d94" : onPhoto, fontSize: 12.5 }}>{p.label}</Text>
   </Button>;
-}
-
-export function Divider() {
-  return <View style={{ width: 0.5, height: 16, marginHorizontal: 3, backgroundColor: "rgba(255,255,255,0.24)" }} />;
 }

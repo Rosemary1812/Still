@@ -1,9 +1,13 @@
-use std::time::{Duration, Instant};
+use std::{
+    collections::HashSet,
+    time::{Duration, Instant},
+};
 
 #[derive(Default)]
 pub struct Player {
     pub album: Option<String>,
     pub paths: Vec<String>,
+    pub video_posters: HashSet<String>,
     index: usize,
     pub playing: bool,
     pub shuffle: bool,
@@ -49,9 +53,25 @@ impl Player {
         self.playing = !self.playing && !self.paths.is_empty();
         self.reset();
     }
+    pub fn finish_video(&mut self, poster: &str, failed: bool) {
+        if self.playing
+            && self.current().is_some_and(|path| path == poster)
+            && self.video_posters.contains(poster)
+        {
+            if failed || self.paths.len() == 1 {
+                self.toggle();
+            } else {
+                self.step(1);
+            }
+        }
+    }
     fn reset(&mut self) {
-        self.deadline = (self.playing && self.paths.len() > 1)
-            .then(|| Instant::now() + Duration::from_secs(60));
+        self.deadline = (self.playing
+            && self.paths.len() > 1
+            && !self
+                .current()
+                .is_some_and(|path| self.video_posters.contains(path)))
+        .then(|| Instant::now() + Duration::from_secs(60));
         self.revision += 1;
     }
     pub fn step(&mut self, direction: isize) {
@@ -114,6 +134,25 @@ mod tests {
         p.step(-1);
         assert!(!p.playing);
         assert!(p.current().is_none());
+    }
+    #[test]
+    fn video_waits_for_its_own_end_and_pauses_on_error() {
+        let mut p = Player::default();
+        p.video_posters.insert("video".into());
+        p.replace(vec!["video".into(), "photo".into()]);
+        p.tick(Instant::now() + Duration::from_secs(600));
+        assert_eq!(p.current().unwrap(), "video");
+        p.finish_video("stale", false);
+        assert_eq!(p.current().unwrap(), "video");
+        p.finish_video("video", true);
+        assert!(!p.playing);
+        p.toggle();
+        p.finish_video("video", false);
+        assert_eq!(p.current().unwrap(), "photo");
+        assert!(p.deadline.is_some());
+        p.replace(vec!["video".into()]);
+        p.finish_video("video", false);
+        assert!(!p.playing);
     }
     #[test]
     fn shuffle_covers_cycle_and_previous_retraces_history() {
