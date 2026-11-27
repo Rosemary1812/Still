@@ -147,21 +147,50 @@ function Wall(p: { app: Library; width: number; height: number; stage: Stage }) 
 }
 const cjk = /[\u3040-\u30ff\u3400-\u9fff\uf900-\ufaff\uac00-\ud7af]/;
 /** The album's name down its spine: upright characters for Chinese, Japanese and Korean, a line turned on its side otherwise. */
-function SpineTitle(p: { name: string; width: number; height: number }) {
-  const size = () => p.width * 0.4, room = () => p.height * 0.6, top = () => p.height * 0.055;
-  const upright = () => { const all = [...p.name.replace(/\s+/g, "")], fit = Math.floor(room() / (size() * 1.2)); return all.length > fit ? [...all.slice(0, fit - 1), "︙"] : all; };
-  return <If when={cjk.test(p.name)} else={<View style={{ position: "absolute", left: (p.width - room()) / 2, top: top() + (room() - p.width) / 2, width: room(), height: p.width, justifyContent: "center", rotate: "90deg" }}>
-    <Text style={{ color: "#fff", fontFamily: "Georgia", fontSize: size(), numberOfLines: 1 }}>{p.name}</Text>
+function SpineTitle(p: { name: string; width: number; height: number; size: number; top: number }) {
+  const room = () => p.height * 0.62;
+  const upright = () => { const all = [...p.name.replace(/\s+/g, "")], fit = Math.floor(room() / (p.size * 1.2)); return all.length > fit ? [...all.slice(0, fit - 1), "︙"] : all; };
+  return <If when={cjk.test(p.name)} else={<View style={{ position: "absolute", left: (p.width - room()) / 2, top: p.top + (room() - p.width) / 2, width: room(), height: p.width, justifyContent: "center", rotate: "90deg" }}>
+    <Text style={{ color: "#fff", fontFamily: "Georgia", fontSize: p.size, numberOfLines: 1 }}>{p.name}</Text>
   </View>}>
-    <View style={{ position: "absolute", left: 0, right: 0, top: top(), alignItems: "center" }}><Each of={upright()} key="index">{c => <Text style={{ color: "#fff", fontFamily: "Georgia", fontSize: size(), lineHeight: size() * 1.2 }}>{c()}</Text>}</Each></View>
+    <View style={{ position: "absolute", left: 0, right: 0, top: p.top, alignItems: "center" }}><Each of={upright()} key="index">{c => <Text style={{ color: "#fff", fontFamily: "Georgia", fontSize: p.size, lineHeight: p.size * 1.2 }}>{c()}</Text>}</Each></View>
   </If>;
 }
-/** An album seen from its spine, the same in the row and on the album turning out of it. */
+// A CD jewel case's spine, after github.com/stvlynn/spines, measured in hundredths of the case's thickness: a molded
+// tab at either end, a clear rail down either side of the inlay, and the inlay's margin.
+const jewel = { tab: 46, rail: 7, pad: 30 };
+const smoke = "linear-gradient(90deg, #4a4a52 0%, #2b2b30 12%, #1b1b1f 50%, #2b2b30 90%, #5a5a62 100%)";
+const glint = (u: number) => Math.max(0.5, u);
+/** One of the case's molded end tabs, with its hinge window and ridges; `foot` is the one at the bottom. */
+function CaseTab(p: { u: number; foot?: boolean }) {
+  const end = (at: number): ViewStyle => p.foot ? { bottom: at } : { top: at };
+  return <View style={{ position: "absolute", left: 0, right: 0, ...end(0), height: jewel.tab * p.u, backgroundImage: smoke }}>
+    <View style={{ position: "absolute", left: "16%", right: "16%", ...end(23 * p.u), height: 16 * p.u, borderRadius: 2.5 * p.u, backgroundColor: "rgba(0,0,0,0.35)", borderWidth: glint(0.8 * p.u), borderColor: "rgba(255,255,255,0.3)" }} />
+    <Each of={[9, 13, 17]} key="index">{at => <View style={{ position: "absolute", left: "24%", right: "24%", ...end(at() * p.u), height: glint(1.2 * p.u), backgroundColor: "rgba(255,255,255,0.22)" }} />}</Each>
+    <View style={{ position: "absolute", left: 0, right: 0, ...end(jewel.tab * p.u - glint(p.u)), height: glint(p.u), backgroundColor: "rgba(255,255,255,0.42)" }} />
+  </View>;
+}
+/** An album seen from its spine, the same in the row and on the album turning out of it: its cover printed on the inlay
+ * of a jewel case, under the case's clear rails and sheen. */
 function SpineFace(p: { app: Library; album: Album; width: number; height: number }) {
-  return <View style={{ width: p.width, height: p.height, borderRadius: p.width * 0.06, overflow: "hidden", backgroundColor: "#343332" }}>
-    <Artwork photo={p.app.cover(p.album)} compactBadge />
-    <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundImage: "linear-gradient(90deg, rgba(255,255,255,0.26) 0%, rgba(255,255,255,0) 24%, rgba(0,0,0,0) 60%, rgba(0,0,0,0.30) 100%), linear-gradient(180deg, rgba(0,0,0,0.52) 0%, rgba(0,0,0,0.24) 36%, rgba(0,0,0,0) 62%)" }} />
-    <SpineTitle name={p.album.name} width={p.width} height={p.height} />
+  const u = () => p.width / 100, tab = () => jewel.tab * u(), rail = () => jewel.rail * u();
+  const inlay = () => ({ width: p.width - rail() * 2, height: p.height - tab() * 2 });
+  const rails = "linear-gradient(90deg, #6b6b73 0%, #2a2a2f 35%, #17171a 100%)";
+  return <View style={{ width: p.width, height: p.height, borderRadius: 5 * u(), overflow: "hidden", backgroundColor: "#0c0c0e" }}>
+    <View style={{ position: "absolute", left: rail(), top: tab(), width: inlay().width, height: inlay().height, overflow: "hidden", backgroundColor: "#343332" }}>
+      <Artwork photo={p.app.cover(p.album)} compactBadge />
+      <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundImage: "linear-gradient(180deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.22) 40%, rgba(0,0,0,0) 64%, rgba(0,0,0,0) 82%, rgba(0,0,0,0.34) 100%)" }} />
+      <SpineTitle name={p.album.name} width={inlay().width} height={inlay().height} size={p.width * 0.38} top={jewel.pad * u()} />
+      <View style={{ position: "absolute", left: 0, right: 0, bottom: jewel.pad * u(), alignItems: "center", opacity: 0.78 }}>
+        <Text style={{ color: "#fff", fontFamily: "Menlo", fontSize: p.width * 0.2, letterSpacing: p.width * 0.02 }}>{String(p.album.photoIds.length).padStart(2, "0")}</Text>
+      </View>
+      <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundImage: "linear-gradient(90deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.06) 14%, rgba(0,0,0,0) 70%, rgba(0,0,0,0.28) 100%)" }} />
+    </View>
+    <View style={{ position: "absolute", left: 0, top: tab(), width: rail(), height: inlay().height, backgroundImage: rails, borderRightWidth: glint(u()), borderColor: "rgba(255,255,255,0.38)" }} />
+    <View style={{ position: "absolute", right: 0, top: tab(), width: rail(), height: inlay().height, backgroundImage: rails, borderLeftWidth: glint(u()), borderColor: "rgba(255,255,255,0.38)" }} />
+    <CaseTab u={u()} />
+    <CaseTab u={u()} foot />
+    <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: 5 * u(), borderWidth: glint(u()), borderColor: "rgba(255,255,255,0.28)", pointerEvents: "none" }} />
   </View>;
 }
 function Spine(p: { app: Library; album: Album; stage: Stage }) {
@@ -258,7 +287,9 @@ function Detail(p: { app: Library; flight: Flight; width: number; height: number
   const body: TransformStep[] = [{ translateX: x }, { translateY: y }, { scale }, { perspective: eye() }, { rotateX: rx }, { rotateY: ry }, { rotateY: turn }, { rotateX: tilt }];
   const face = (width: number, height: number, onto: TransformStep[]): ViewStyle => ({ position: "absolute", left: (side() - width) / 2, top: (side() - height) / 2, width, height, backfaceVisibility: "hidden", transform: [...body, ...onto] });
   const back: TransformStep[] = [{ translateX: -side() / 2 }, { rotateY: -90 }, { translateX: -depth() / 2 }];
-  const paper = (across: boolean): ViewStyle => ({ opacity: edges, backgroundColor: "#dedad1", backgroundImage: `linear-gradient(${across ? 90 : 180}deg, rgba(0,0,0,0.10) 0%, rgba(0,0,0,0) 30%, rgba(0,0,0,0) 70%, rgba(0,0,0,0.12) 100%)` });
+  // A record from the cabinet is a jewel case, smoky plastic round its edges; a cover from the wall is card.
+  const paper = (across: boolean): ViewStyle => f.spine ? { opacity: edges, backgroundColor: "#1b1b1f", backgroundImage: across ? smoke : smoke.replace("90deg", "180deg") }
+    : { opacity: edges, backgroundColor: "#dedad1", backgroundImage: `linear-gradient(${across ? 90 : 180}deg, rgba(0,0,0,0.10) 0%, rgba(0,0,0,0) 30%, rgba(0,0,0,0) 70%, rgba(0,0,0,0.12) 100%)` };
   return <View testID="album-detail" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 5 }}>
     <View testID="detail-backdrop" accessibilityLabel="放回相册" onPress={dismiss} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: veil, backdropFilter: "blur(7px)", maskImage: "linear-gradient(#000, #000)", backgroundColor: "rgba(226,226,225,0.3)" }} />
     <View style={{ position: "absolute", left: 34, top: 0, bottom: 36, width: Math.max(120, left() - 60), justifyContent: "center", gap: 10, opacity: words, pointerEvents: "none" }}>
